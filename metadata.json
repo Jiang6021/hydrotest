@@ -1,0 +1,5 @@
+{
+  "name": "HydroSlayer",
+  "description": "A gamified habit-tracking RPG where players defeat a Fire Demon by tracking water intake and gratitude. Features MVVM architecture and simulated transactional database logic.",
+  "requestFramePermissions": []
+}
