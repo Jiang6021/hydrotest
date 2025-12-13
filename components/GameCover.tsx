@@ -87,7 +87,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
         </button>
 
         <div className="text-xs text-slate-600 mt-8">
-          v1.0.0 • MVVM Architecture
+          v1.0.1 • ID Generation Fix
         </div>
       </div>
     </div>
