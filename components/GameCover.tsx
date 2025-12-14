@@ -14,25 +14,31 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
     const updateTime = () => {
       const now = new Date();
       
-      // Format Date: e.g., "2023年10月27日 星期五"
-      const dateFormatter = new Intl.DateTimeFormat('zh-TW', {
-        timeZone: 'Asia/Taipei',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long'
-      });
+      try {
+          // Format Date: e.g., "2023年10月27日 星期五"
+          const dateFormatter = new Intl.DateTimeFormat('zh-TW', {
+            timeZone: 'Asia/Taipei',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            weekday: 'long'
+          });
 
-      // Format Time: e.g., "14:30"
-      const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
-        timeZone: 'Asia/Taipei',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
+          // Format Time: e.g., "14:30"
+          const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
+            timeZone: 'Asia/Taipei',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
 
-      setTaiwanDate(dateFormatter.format(now));
-      setTimeString(timeFormatter.format(now));
+          setTaiwanDate(dateFormatter.format(now));
+          setTimeString(timeFormatter.format(now));
+      } catch (e) {
+          // Fallback for browsers that don't support timeZone option perfectly
+          setTaiwanDate(now.toLocaleDateString());
+          setTimeString(now.toLocaleTimeString());
+      }
     };
 
     updateTime();
@@ -43,7 +49,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden font-inter text-white p-6">
+    <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden font-inter text-white p-6">
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
@@ -87,7 +93,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
         </button>
 
         <div className="text-xs text-slate-600 mt-8">
-          v1.0.1 • ID Generation Fix
+          v1.0.2 • LINE Browser Fix
         </div>
       </div>
     </div>

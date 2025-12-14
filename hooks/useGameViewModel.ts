@@ -7,16 +7,42 @@ const STORAGE_KEY_USER = 'hydro_slayer_id';
 const STORAGE_KEY_ROOM = 'hydro_slayer_room';
 const DEFAULT_ROOM = 'community_raid_01';
 
+// Safe Storage Helper
+const safeStorage = {
+    getItem: (key: string): string | null => {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.warn('LocalStorage access denied', e);
+            return null;
+        }
+    },
+    setItem: (key: string, value: string) => {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.warn('LocalStorage write denied', e);
+        }
+    },
+    removeItem: (key: string) => {
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            console.warn('LocalStorage remove denied', e);
+        }
+    }
+};
+
 export const useGameViewModel = () => {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
   
-  // Initialize from localStorage
+  // Initialize from localStorage safely
   const [myPlayerId, setMyPlayerId] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEY_USER);
+    return safeStorage.getItem(STORAGE_KEY_USER);
   });
 
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEY_ROOM);
+    return safeStorage.getItem(STORAGE_KEY_ROOM);
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,8 +80,8 @@ export const useGameViewModel = () => {
         await gameService.joinRoom(safeRoomId, newId, cleanName);
         
         // Save to storage and state
-        localStorage.setItem(STORAGE_KEY_USER, newId);
-        localStorage.setItem(STORAGE_KEY_ROOM, safeRoomId);
+        safeStorage.setItem(STORAGE_KEY_USER, newId);
+        safeStorage.setItem(STORAGE_KEY_ROOM, safeRoomId);
         
         setMyPlayerId(newId);
         setCurrentRoomId(safeRoomId);
@@ -69,8 +95,8 @@ export const useGameViewModel = () => {
 
   // Action to Logout
   const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY_USER);
-    localStorage.removeItem(STORAGE_KEY_ROOM);
+    safeStorage.removeItem(STORAGE_KEY_USER);
+    safeStorage.removeItem(STORAGE_KEY_ROOM);
     
     setMyPlayerId(null);
     setCurrentRoomId(null);
