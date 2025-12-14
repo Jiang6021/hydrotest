@@ -46,8 +46,8 @@ export default function App() {
     drinkWater,
     completeQuest,
     submitGratitude,
-    performAttack, // Destructure here
-    debugRespawn   // Destructure here
+    performAttack, 
+    debugRespawn   
   } = useGameViewModel();
 
   // 1. Cover Screen
@@ -88,6 +88,23 @@ export default function App() {
             </div>
          </div>
       </div>
+    );
+  }
+
+  // 2.5 Safety Check: If logged in but player data missing (e.g. DB reset), show sync/loading
+  // This prevents passing 'null' to components that expect 'Player', fixing the build error.
+  if (!currentPlayer) {
+    return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400 font-inter">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mb-4"></div>
+            <p className="text-xs">Syncing Wizard Data...</p>
+            <button 
+                onClick={logout}
+                className="mt-8 px-4 py-2 bg-slate-800 rounded text-xs text-red-400 hover:bg-slate-700 transition-colors"
+            >
+                Reset Session
+            </button>
+        </div>
     );
   }
 
