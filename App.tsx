@@ -55,7 +55,7 @@ export default function App() {
   // 2. Login / Lobby Screen
   if (!isLoggedIn || !roomData) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-inter">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-inter force-gpu-render">
          <div className="max-w-md w-full bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
             <h2 className="text-2xl font-pixel text-cyan-400 mb-2 text-center">Enter the Party</h2>
             <p className="text-slate-400 text-xs text-center mb-6">Join your friends to defeat the demon!</p>
@@ -168,7 +168,8 @@ export default function App() {
           <h1 className="font-pixel text-xs text-slate-500 tracking-widest">{activeTab}</h1>
       </div> */}
 
-      <div className="max-w-md mx-auto p-4 min-h-screen relative">
+      {/* Main Content Area - APPLIED FIX HERE */}
+      <div className="max-w-md mx-auto p-4 min-h-screen relative force-gpu-render">
         {renderContent()}
 
         {/* Damage/Drop Feedback Overlay (Global) */}
@@ -221,7 +222,7 @@ export default function App() {
 
       {/* Gratitude Modal (Global) */}
       {showGratitudeModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] backdrop-blur-sm animate-in fade-in duration-200 force-gpu-render">
               <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
                   <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
                       <Sparkles className="text-purple-400" /> Gratitude Buff
