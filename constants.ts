@@ -2,11 +2,16 @@
  * game_constants.dart Equivalent
  */
 
-export const DAMAGE_PER_DRINK = 100; // Base damage for a standard water intake
+export const DAMAGE_PER_DRINK = 150; // Base damage per Attack
 export const MAX_PLAYER_LIVES = 3;
-export const BOSS_MAX_HP = 1000; // Reduced from 5000 for testing
-export const BOSS_HP_PER_PLAYER = 500; // Reduced from 2000 for testing
-export const DAILY_WATER_GOAL = 2000; // 每日目標 2000ml
+export const BOSS_MAX_HP = 3000; // Increased base HP (Harder!)
+export const BOSS_HP_PER_PLAYER = 1500; // Scaling
+export const DAILY_WATER_GOAL = 2000; // Daily Goal 2000ml
+
+// New Mechanics
+export const WATER_PER_ATTACK_CHARGE = 500; // Every 500ml = 1 Attack
+export const MAX_DAILY_ATTACKS = 5; // Max attacks per day
+export const SIP_VOLUME = 50; // Small sip amount
 
 export enum BuffType {
   NONE = 'NONE',
@@ -17,15 +22,16 @@ export enum BuffType {
 
 export enum ActionType {
   DRINK = 'DRINK',
+  ATTACK = 'ATTACK', // New Action Type
   GRATITUDE = 'GRATITUDE',
   QUEST = 'QUEST',
 }
 
 export const BUFF_DESCRIPTIONS: Record<BuffType, string> = {
   [BuffType.NONE]: '',
-  [BuffType.CRITICAL_x3]: 'Next Drink: 3x Damage!',
-  [BuffType.HEAL_LIFE]: 'Next Drink: Restores 1 Heart (0 Dmg)',
-  [BuffType.DOUBLE_DMG]: 'Next Drink: 2x Damage',
+  [BuffType.CRITICAL_x3]: 'Next Attack: 3x Damage!',
+  [BuffType.HEAL_LIFE]: 'Next Attack: Restores 1 Heart',
+  [BuffType.DOUBLE_DMG]: 'Next Attack: 2x Damage',
 };
 
 // Cute drops

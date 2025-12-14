@@ -115,21 +115,22 @@ export const useGameViewModel = () => {
         .sort((a, b) => b.totalDamageDealt - a.totalDamageDealt) 
     : [];
 
+  // Only Hydrates (no damage)
   const drinkWater = useCallback(async (ml: number) => {
-    if (!currentRoomId || !roomData || !myPlayerId || isProcessing || roomData.boss.isDefeated) return;
+    if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
 
     setIsProcessing(true);
     setLastActionFeedback(null);
 
     try {
       const result = await gameService.drinkWaterTransaction(currentRoomId, myPlayerId, ml);
-      if (result.success) {
+      if (result.success && result.drop) {
         setLastActionFeedback({
-            msg: result.buffUsed === BuffType.HEAL_LIFE ? 'HEALED!' : 'DAMAGE!',
-            val: result.dmg,
+            msg: 'Found Item!',
+            val: 0,
             drop: result.drop
         });
-        setTimeout(() => setLastActionFeedback(null), 3000); // Increased duration to show drop
+        setTimeout(() => setLastActionFeedback(null), 3000);
       }
     } catch (e) {
       console.error("Drink failed", e);
@@ -137,6 +138,30 @@ export const useGameViewModel = () => {
       setIsProcessing(false);
     }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
+
+  // Performs Attack (Consumes charge)
+  const performAttack = useCallback(async () => {
+      if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
+
+      setIsProcessing(true);
+      setLastActionFeedback(null);
+
+      try {
+          const result = await gameService.performAttackTransaction(currentRoomId, myPlayerId);
+          if (result.success) {
+               setLastActionFeedback({
+                  msg: result.buffUsed === BuffType.HEAL_LIFE ? 'HEALED!' : 'ATTACK!',
+                  val: result.dmg,
+              });
+              setTimeout(() => setLastActionFeedback(null), 2000);
+          }
+      } catch (e) {
+          console.error("Attack failed", e);
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [currentRoomId, myPlayerId, roomData, isProcessing]);
+
 
   const completeQuest = useCallback(async (questId: string, questName: string) => {
       if (!currentRoomId || !myPlayerId || isProcessing) return;
@@ -172,6 +197,12 @@ export const useGameViewModel = () => {
     }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
 
+  // Debug Helper
+  const debugRespawn = useCallback(async () => {
+      if (!currentRoomId) return;
+      await gameService.debugRespawnBoss(currentRoomId);
+  }, [currentRoomId]);
+
   return {
     roomData,
     currentRoomId,
@@ -186,7 +217,9 @@ export const useGameViewModel = () => {
     joinGame,
     logout, 
     drinkWater,
+    performAttack,
     completeQuest,
-    submitGratitude
+    submitGratitude,
+    debugRespawn // Exported
   };
 };

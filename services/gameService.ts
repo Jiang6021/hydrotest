@@ -1,5 +1,5 @@
 import { RoomData, GameLog, Player } from '../types';
-import { BuffType, ActionType, DAMAGE_PER_DRINK, BOSS_MAX_HP, BOSS_HP_PER_PLAYER, MAX_PLAYER_LIVES, TRINKETS } from '../constants';
+import { BuffType, ActionType, DAMAGE_PER_DRINK, BOSS_MAX_HP, BOSS_HP_PER_PLAYER, MAX_PLAYER_LIVES, TRINKETS, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS } from '../constants';
 import { db } from '../firebaseConfig';
 import { ref, onValue, runTransaction, set, get } from 'firebase/database';
 
@@ -52,9 +52,9 @@ class GameService {
           players: {},
           logs: {},
           dailyEvent: {
-            type: "CRITICAL_DAY",
-            multiplier: 1.5,
-            description: "Community Rally! Damage x1.5"
+            type: "NORMAL",
+            multiplier: 1,
+            description: "Standard Battle"
           }
         };
       }
@@ -74,6 +74,7 @@ class GameService {
           hp: MAX_PLAYER_LIVES,
           activeBuff: BuffType.NONE,
           todayWaterMl: 0,
+          attacksPerformed: 0,
           totalDamageDealt: 0,
           joinedAt: Date.now(),
           inventory: [],
@@ -102,119 +103,156 @@ class GameService {
       } else {
         // Update name if they changed it, but keep stats
         currentData.players[playerId].name = playerName;
+        if (currentData.players[playerId].attacksPerformed === undefined) {
+            currentData.players[playerId].attacksPerformed = 0;
+        }
       }
 
       return currentData;
     });
   }
 
-  async drinkWaterTransaction(roomId: string, playerId: string, mlAmount: number): Promise<{ success: boolean; dmg: number; buffUsed: BuffType; drop: string | null }> {
+  // Pure Hydration Transaction
+  async drinkWaterTransaction(roomId: string, playerId: string, mlAmount: number): Promise<{ success: boolean; drop: string | null }> {
     const roomRef = ref(db, `rooms/${roomId}`);
     const todayStr = new Date().toDateString();
-    
-    let resultDmg = 0;
-    let resultBuff = BuffType.NONE;
     let droppedItem: string | null = null;
 
     try {
-      await runTransaction(roomRef, (currentData: any) => {
-        if (!currentData || !currentData.players || !currentData.players[playerId]) return;
-        
-        // Check Daily Reset during action too (edge case: stayed online overnight)
-        if (currentData.lastActiveDate !== todayStr) {
-            this.performDailyReset(currentData, todayStr);
-            // If we reset, we might want to continue or abort. 
-            // Let's continue, effectively the first drink of the day starts the new boss.
-        }
+        await runTransaction(roomRef, (currentData: any) => {
+            if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+            
+            // Check Daily Reset
+            if (currentData.lastActiveDate !== todayStr) {
+                this.performDailyReset(currentData, todayStr);
+            }
 
-        const player = currentData.players[playerId];
-        const boss = currentData.boss;
+            const player = currentData.players[playerId];
+            player.todayWaterMl = (player.todayWaterMl || 0) + mlAmount;
 
-        if (boss.currentHp <= 0) return;
+            // 30% Chance for Drop
+            if (Math.random() < 0.3) {
+                if (!player.inventory) player.inventory = [];
+                const randomTrinket = TRINKETS[Math.floor(Math.random() * TRINKETS.length)];
+                player.inventory.push(randomTrinket);
+                droppedItem = randomTrinket;
+            }
 
-        // --- Core Gameplay Logic ---
-        const currentBuff = player.activeBuff;
-        let baseDamage = DAMAGE_PER_DRINK;
-        let finalDamage = 0;
-        let healed = false;
-        
-        // 1. Apply Buffs
-        finalDamage = baseDamage;
+            // Optional: Log drinking? Maybe too spammy if we have attack logs. 
+            // Let's log only if they find an item or hit a milestone to keep logs clean for Gratitude/Attacks
+            if (droppedItem) {
+                 const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                 if (!currentData.logs) currentData.logs = {};
+                 currentData.logs[logId] = {
+                    id: logId,
+                    timestamp: Date.now(),
+                    userId: playerId,
+                    userName: player.name,
+                    actionType: ActionType.DRINK,
+                    value: mlAmount,
+                    damageDealt: 0,
+                    message: `hydrated ${mlAmount}ml and found ${droppedItem}!`
+                 };
+            }
 
-        if (currentBuff === BuffType.CRITICAL_x3) {
-          finalDamage = finalDamage * 3;
-        } else if (currentBuff === BuffType.DOUBLE_DMG) {
-          finalDamage = finalDamage * 2;
-        } else if (currentBuff === BuffType.HEAL_LIFE) {
-          finalDamage = 0;
-          if (player.hp < MAX_PLAYER_LIVES) {
-            player.hp += 1;
-            healed = true;
-          }
-        }
-
-        // 2. Apply Daily Event
-        if (!healed && finalDamage > 0 && currentData.dailyEvent && currentData.dailyEvent.multiplier) {
-            finalDamage = Math.floor(finalDamage * currentData.dailyEvent.multiplier);
-        }
-
-        resultDmg = finalDamage;
-        resultBuff = currentBuff;
-
-        // Update Boss
-        let newBossHp = boss.currentHp - finalDamage;
-        if (newBossHp <= 0) {
-            newBossHp = 0;
-            boss.isDefeated = true;
-            currentData.status = 'VICTORY';
-        }
-        boss.currentHp = newBossHp;
-
-        // Update Player Stats
-        player.todayWaterMl += mlAmount;
-        player.activeBuff = BuffType.NONE;
-        player.totalDamageDealt = (player.totalDamageDealt || 0) + finalDamage;
-
-        // 3. Cute Drop Logic (30% chance)
-        if (Math.random() < 0.3) {
-            if (!player.inventory) player.inventory = [];
-            const randomTrinket = TRINKETS[Math.floor(Math.random() * TRINKETS.length)];
-            player.inventory.push(randomTrinket);
-            droppedItem = randomTrinket;
-        }
-
-        // Log
-        const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        if (!currentData.logs) currentData.logs = {};
-        
-        let msg = healed 
-            ? `recovered 1 Heart!` 
-            : `dealt ${finalDamage} DMG!`;
-        
-        if (droppedItem) {
-            msg += ` Found ${droppedItem}!`;
-        }
-
-        currentData.logs[logId] = {
-          id: logId,
-          timestamp: Date.now(),
-          userId: playerId,
-          userName: player.name,
-          actionType: ActionType.DRINK,
-          value: mlAmount,
-          damageDealt: finalDamage,
-          message: msg
-        };
-
-        return currentData;
-      });
-
-      return { success: true, dmg: resultDmg, buffUsed: resultBuff, drop: droppedItem };
-
+            return currentData;
+        });
+        return { success: true, drop: droppedItem };
     } catch (e) {
-      console.error("Firebase Transaction Failed", e);
-      return { success: false, dmg: 0, buffUsed: BuffType.NONE, drop: null };
+        console.error("Drink Tx Failed", e);
+        return { success: false, drop: null };
     }
+  }
+
+  // Attack Transaction
+  async performAttackTransaction(roomId: string, playerId: string): Promise<{ success: boolean; dmg: number; buffUsed: BuffType }> {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      let resultDmg = 0;
+      let resultBuff = BuffType.NONE;
+
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+              if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+
+              const player = currentData.players[playerId];
+              const boss = currentData.boss;
+
+              // Validate Attack Capability
+              const maxPossibleAttacks = Math.floor(player.todayWaterMl / WATER_PER_ATTACK_CHARGE);
+              const attacksDone = player.attacksPerformed || 0;
+
+              if (attacksDone >= maxPossibleAttacks || attacksDone >= MAX_DAILY_ATTACKS) {
+                  return; 
+              }
+
+              // --- Combat Logic ---
+              const currentBuff = player.activeBuff;
+              let baseDamage = DAMAGE_PER_DRINK;
+              let finalDamage = 0;
+              let healed = false;
+
+              // 1. Apply Buffs
+              finalDamage = baseDamage;
+              if (currentBuff === BuffType.CRITICAL_x3) {
+                  finalDamage = finalDamage * 3;
+              } else if (currentBuff === BuffType.DOUBLE_DMG) {
+                  finalDamage = finalDamage * 2;
+              } else if (currentBuff === BuffType.HEAL_LIFE) {
+                  finalDamage = 0;
+                  if (player.hp < MAX_PLAYER_LIVES) {
+                      player.hp += 1;
+                      healed = true;
+                  }
+              }
+
+              // Removed daily Event multiplier for stability in testing
+
+              resultDmg = finalDamage;
+              resultBuff = currentBuff;
+
+              // 3. Update Boss (Double check logic)
+              if (boss && !boss.isDefeated) {
+                  let newBossHp = boss.currentHp - finalDamage;
+                  if (newBossHp < 0) newBossHp = 0; // Clamp
+                  
+                  if (newBossHp === 0) {
+                      boss.isDefeated = true;
+                      currentData.status = 'VICTORY';
+                  }
+                  boss.currentHp = newBossHp;
+              }
+
+              // 4. Update Player
+              player.attacksPerformed = attacksDone + 1;
+              player.activeBuff = BuffType.NONE; // Consume Buff
+              player.totalDamageDealt = (player.totalDamageDealt || 0) + finalDamage;
+
+              // 5. Log
+              const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+              if (!currentData.logs) currentData.logs = {};
+              
+              let msg = healed ? `restored a Heart!` : `attacked for ${finalDamage} DMG!`;
+              if (boss.isDefeated && !healed) msg = `delivered the FINAL BLOW for ${finalDamage} DMG!`;
+
+              currentData.logs[logId] = {
+                  id: logId,
+                  timestamp: Date.now(),
+                  userId: playerId,
+                  userName: player.name,
+                  actionType: ActionType.ATTACK,
+                  value: '',
+                  damageDealt: finalDamage,
+                  message: msg
+              };
+
+              return currentData;
+          });
+          
+          return { success: true, dmg: resultDmg, buffUsed: resultBuff };
+      } catch (e) {
+          console.error("Attack Tx Failed", e);
+          return { success: false, dmg: 0, buffUsed: BuffType.NONE };
+      }
   }
 
   async completeQuestTransaction(roomId: string, playerId: string, questId: string, questName: string): Promise<{ success: boolean; drop: string }> {
@@ -300,8 +338,8 @@ class GameService {
                 actionType: ActionType.GRATITUDE,
                 value: text,
                 damageDealt: 0,
-                // Changed from "prayed" to "sent gratitude"
-                message: `sent gratitude: "${text}"`
+                // Highlight Gratitude in logs
+                message: `shared gratitude: "${text}" and received a Blessing!`
             };
 
             return currentData;
@@ -310,6 +348,52 @@ class GameService {
     } catch (e) {
         return BuffType.NONE;
     }
+  }
+
+  // Debug: Force Boss Respawn & Reset Player States for Testing
+  async debugRespawnBoss(roomId: string) {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+              if (!currentData) return;
+              
+              currentData.status = 'ACTIVE';
+              
+              // Reset Boss
+              if (currentData.boss) {
+                currentData.boss.isDefeated = false;
+                currentData.boss.currentHp = currentData.boss.maxHp;
+              }
+
+              // Reset All Players Daily Stats to allow testing
+              if (currentData.players) {
+                  Object.values(currentData.players).forEach((p: any) => {
+                      p.todayWaterMl = 0;
+                      p.attacksPerformed = 0;
+                      p.activeBuff = BuffType.NONE;
+                      // Don't reset totalDamageDealt completely so we see history, or reset if desired. 
+                      // Let's keep total damage but reset daily charges.
+                  });
+              }
+
+              const logId = `sys_debug_${Date.now()}`;
+              if (!currentData.logs) currentData.logs = {};
+              currentData.logs[logId] = {
+                  id: logId,
+                  timestamp: Date.now(),
+                  userId: 'SYSTEM',
+                  userName: 'SYSTEM',
+                  actionType: ActionType.GRATITUDE,
+                  value: '',
+                  damageDealt: 0,
+                  message: `DEBUG: Boss respawned & Player daily stats reset!`
+              };
+              
+              return currentData;
+          });
+      } catch (e) {
+          console.error("Debug Respawn Failed", e);
+      }
   }
 
   /**
@@ -343,6 +427,7 @@ class GameService {
           currentData.boss.isDefeated = false;
           // Calculate max HP based on current players for scaling
           const playerCount = Object.keys(currentData.players || {}).length;
+          // Updated Scaling logic: Requires teamwork and buffs
           const scaledHp = BOSS_MAX_HP + (playerCount * BOSS_HP_PER_PLAYER);
           currentData.boss.maxHp = scaledHp;
           currentData.boss.currentHp = scaledHp;
@@ -352,6 +437,7 @@ class GameService {
       if (currentData.players) {
           Object.values(currentData.players).forEach((p: any) => {
               p.todayWaterMl = 0;
+              p.attacksPerformed = 0; // Reset attacks
               p.completedQuests = [];
               if (p.hp <= 0) p.hp = MAX_PLAYER_LIVES; // Revive if dead
           });
@@ -368,7 +454,7 @@ class GameService {
           actionType: ActionType.GRATITUDE,
           value: '',
           damageDealt: 0,
-          message: `A new day dawns! The Demon returns!`
+          message: `A new day dawns! The Demon returns stronger!`
       };
   }
 }

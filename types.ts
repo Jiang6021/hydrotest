@@ -11,6 +11,7 @@ export interface Player {
   hp: number; // Lives
   activeBuff: BuffType;
   todayWaterMl: number;
+  attacksPerformed: number; // New: Tracks daily attacks used
   totalDamageDealt: number; // For leaderboard
   joinedAt: number;
   inventory?: string[]; // Cute trinkets collection

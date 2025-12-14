@@ -31,6 +31,7 @@ export default function App() {
   const [inputName, setInputName] = useState('');
   const DEFAULT_FRIEND_ROOM = 'friends_party_01'; 
 
+  // Call hook ONCE at the top level
   const { 
     roomData, 
     currentPlayer, 
@@ -44,7 +45,9 @@ export default function App() {
     logout,
     drinkWater,
     completeQuest,
-    submitGratitude
+    submitGratitude,
+    performAttack, // Destructure here
+    debugRespawn   // Destructure here
   } = useGameViewModel();
 
   // 1. Cover Screen
@@ -104,53 +107,6 @@ export default function App() {
 
   const totalRaidDamage = otherPlayers.reduce((acc, p) => acc + p.totalDamageDealt, 0);
 
-  // --- RENDER CURRENT TAB CONTENT ---
-  const renderContent = () => {
-      if (!currentPlayer) return null;
-
-      switch(activeTab) {
-          case 'LOBBY':
-              return (
-                  <LobbyView 
-                      player={currentPlayer}
-                      onCompleteQuest={completeQuest}
-                      isProcessing={isProcessing}
-                  />
-              );
-          case 'STATUS':
-              return (
-                  <StatusView 
-                      player={currentPlayer}
-                      onOpenGratitude={() => setShowGratitudeModal(true)}
-                      isProcessing={isProcessing}
-                      totalDamageContrib={totalRaidDamage}
-                  />
-              );
-          case 'GROUP':
-              return (
-                  <GroupRaidView 
-                      roomData={roomData}
-                      currentPlayer={currentPlayer}
-                      otherPlayers={otherPlayers}
-                      logs={logs}
-                      onDrink={drinkWater}
-                      isProcessing={isProcessing}
-                      lastActionFeedback={lastActionFeedback}
-                  />
-              );
-          case 'STORAGE':
-              return (
-                  <StorageView player={currentPlayer} />
-              );
-          case 'PROFILE':
-              return (
-                  <ProfileView player={currentPlayer} onLogout={handleLogout} />
-              );
-          default:
-              return null;
-      }
-  };
-
   // --- TAB DEFINITIONS ---
   const TABS: {id: Tab, icon: any, label: string}[] = [
       { id: 'LOBBY', icon: Home, label: 'Lobby' },
@@ -163,14 +119,25 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-inter">
       
-      {/* Dynamic Header (Optional based on Tab, but keeping it simple for now) */}
-      {/* <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md p-3 border-b border-slate-900 flex justify-center">
-          <h1 className="font-pixel text-xs text-slate-500 tracking-widest">{activeTab}</h1>
-      </div> */}
-
-      {/* Main Content Area - APPLIED FIX HERE */}
+      {/* Main Content Area */}
       <div className="max-w-md mx-auto p-4 min-h-screen relative force-gpu-render">
-        {renderContent()}
+         {/* Render Active View */}
+         {activeTab === 'LOBBY' && <LobbyView player={currentPlayer} onCompleteQuest={completeQuest} isProcessing={isProcessing} />}
+         {activeTab === 'STATUS' && <StatusView player={currentPlayer} onOpenGratitude={() => setShowGratitudeModal(true)} isProcessing={isProcessing} totalDamageContrib={totalRaidDamage} />}
+         {activeTab === 'GROUP' && <GroupRaidView 
+                roomData={roomData}
+                currentPlayer={currentPlayer}
+                otherPlayers={otherPlayers}
+                logs={logs}
+                onDrink={drinkWater}
+                onAttack={performAttack}
+                onOpenGratitude={() => setShowGratitudeModal(true)}
+                isProcessing={isProcessing}
+                lastActionFeedback={lastActionFeedback}
+                debugRespawn={debugRespawn}
+            />}
+         {activeTab === 'STORAGE' && <StorageView player={currentPlayer} />}
+         {activeTab === 'PROFILE' && <ProfileView player={currentPlayer} onLogout={handleLogout} />}
 
         {/* Damage/Drop Feedback Overlay (Global) */}
         {lastActionFeedback && (
