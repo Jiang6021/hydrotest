@@ -5,20 +5,21 @@ import { Flame } from 'lucide-react';
 interface BossCardProps {
   boss: Boss;
   isHit: boolean;
+  isSurprised?: boolean;
 }
 
-export const BossCard: React.FC<BossCardProps> = ({ boss, isHit }) => {
+export const BossCard: React.FC<BossCardProps> = ({ boss, isHit, isSurprised }) => {
   const hpPercentage = (boss.currentHp / boss.maxHp) * 100;
   
   return (
-    <div className={`relative bg-orange-950/40 rounded-xl p-6 border-2 border-orange-700 shadow-[0_0_20px_rgba(234,88,12,0.3)] overflow-hidden transition-transform ${isHit ? 'shake-animation' : ''}`}>
+    <div className={`relative bg-orange-950/40 rounded-xl p-6 border-2 border-orange-700 shadow-[0_0_20px_rgba(234,88,12,0.3)] overflow-hidden transition-transform ${isHit ? 'shake-animation' : ''} ${isSurprised ? 'scale-[0.98]' : ''}`}>
       {/* Background decoration */}
       <div className="absolute top-0 right-0 p-4 opacity-10">
         <Flame size={120} className="text-orange-500" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="w-24 h-24 bg-orange-900/50 rounded-full flex items-center justify-center border-4 border-orange-600 mb-4 shadow-[0_0_15px_rgba(234,88,12,0.5)]">
+        <div className={`w-24 h-24 bg-orange-900/50 rounded-full flex items-center justify-center border-4 border-orange-600 mb-4 shadow-[0_0_15px_rgba(234,88,12,0.5)] transition-all ${isSurprised ? 'scale-110 border-orange-400' : ''}`}>
           <span className="text-5xl animate-pulse">🔥</span>
         </div>
         

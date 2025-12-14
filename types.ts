@@ -13,6 +13,8 @@ export interface Player {
   todayWaterMl: number;
   totalDamageDealt: number; // For leaderboard
   joinedAt: number;
+  inventory?: string[]; // Cute trinkets collection
+  completedQuests?: string[]; // Array of quest IDs completed today
 }
 
 export interface Boss {
@@ -42,6 +44,7 @@ export interface DailyEvent {
 export interface RoomData {
   roomId: string;
   status: 'ACTIVE' | 'VICTORY';
+  lastActiveDate: string; // "YYYY-MM-DD"
   boss: Boss;
   players: Record<string, Player>;
   logs: Record<string, GameLog>;

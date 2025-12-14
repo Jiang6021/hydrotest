@@ -20,10 +20,13 @@ export const useGameViewModel = () => {
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number} | null>(null);
+  const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number, drop?: string | null} | null>(null);
 
   useEffect(() => {
     if (!currentRoomId) return;
+
+    // Check if a daily reset is needed as soon as we connect
+    gameService.checkAndTriggerDailyReset(currentRoomId);
 
     // Subscribe to room updates globally
     const unsubscribe = gameService.subscribe(currentRoomId, setRoomData);
@@ -38,19 +41,13 @@ export const useGameViewModel = () => {
     const safeRoomId = roomIdInput.trim() || DEFAULT_ROOM;
 
     // Fix: Create Robust Deterministic ID
-    // Previous regex `/[^a-z0-9]/g` stripped Chinese characters, causing collisions.
-    // Now we use URL encoding + Base64 to handle any character set safely.
     try {
         const cleanName = name.trim();
-        
-        // 1. Encode URI Component (handles Chinese/Emoji -> %XX format)
-        // 2. Base64 encode it (makes it safe-ish string)
-        // 3. Replace '/' and '+' which are valid in Base64 but bad for Firebase/URLs
         const encodedName = encodeURIComponent(cleanName);
         const base64Name = btoa(encodedName)
             .replace(/\//g, '_')
             .replace(/\+/g, '-')
-            .replace(/=/g, ''); // Strip padding
+            .replace(/=/g, ''); 
 
         const newId = `u_${base64Name}`;
         
@@ -103,9 +100,10 @@ export const useGameViewModel = () => {
       if (result.success) {
         setLastActionFeedback({
             msg: result.buffUsed === BuffType.HEAL_LIFE ? 'HEALED!' : 'DAMAGE!',
-            val: result.dmg
+            val: result.dmg,
+            drop: result.drop
         });
-        setTimeout(() => setLastActionFeedback(null), 2000);
+        setTimeout(() => setLastActionFeedback(null), 3000); // Increased duration to show drop
       }
     } catch (e) {
       console.error("Drink failed", e);
@@ -113,6 +111,28 @@ export const useGameViewModel = () => {
       setIsProcessing(false);
     }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
+
+  const completeQuest = useCallback(async (questId: string, questName: string) => {
+      if (!currentRoomId || !myPlayerId || isProcessing) return;
+      setIsProcessing(true);
+      setLastActionFeedback(null);
+
+      try {
+        const result = await gameService.completeQuestTransaction(currentRoomId, myPlayerId, questId, questName);
+        if (result.success) {
+             setLastActionFeedback({
+                msg: 'QUEST COMPLETE!',
+                val: 0,
+                drop: result.drop
+            });
+            setTimeout(() => setLastActionFeedback(null), 3000);
+        }
+      } catch (e) {
+          console.error("Quest failed", e);
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [currentRoomId, myPlayerId, isProcessing]);
 
   const submitGratitude = useCallback(async (text: string) => {
     if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
@@ -125,12 +145,6 @@ export const useGameViewModel = () => {
         setIsProcessing(false);
     }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
-
-  const resetGame = () => {
-    if (currentRoomId) {
-        gameService.resetGame(currentRoomId);
-    }
-  };
 
   return {
     roomData,
@@ -146,7 +160,7 @@ export const useGameViewModel = () => {
     joinGame,
     logout, 
     drinkWater,
-    submitGratitude,
-    resetGame
+    completeQuest,
+    submitGratitude
   };
 };
