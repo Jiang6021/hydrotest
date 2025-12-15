@@ -44,7 +44,9 @@ export default function App() {
     joinGame,
     logout,
     drinkWater,
-    completeQuest,
+    addTodo,       // New
+    completeTodo,  // New
+    completeQuest, // Legacy (unused in Lobby now)
     submitGratitude,
     performAttack, 
     debugRespawn   
@@ -92,7 +94,6 @@ export default function App() {
   }
 
   // 2.5 Safety Check: If logged in but player data missing (e.g. DB reset), show sync/loading
-  // This prevents passing 'null' to components that expect 'Player', fixing the build error.
   if (!currentPlayer) {
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400 font-inter">
@@ -139,7 +140,14 @@ export default function App() {
       {/* Main Content Area */}
       <div className="max-w-md mx-auto p-4 min-h-screen relative force-gpu-render">
          {/* Render Active View */}
-         {activeTab === 'LOBBY' && <LobbyView player={currentPlayer} onCompleteQuest={completeQuest} isProcessing={isProcessing} />}
+         {activeTab === 'LOBBY' && (
+            <LobbyView 
+                player={currentPlayer} 
+                onCompleteQuest={completeTodo} 
+                onAddTodo={addTodo} 
+                isProcessing={isProcessing} 
+            />
+         )}
          {activeTab === 'STATUS' && <StatusView player={currentPlayer} onOpenGratitude={() => setShowGratitudeModal(true)} isProcessing={isProcessing} totalDamageContrib={totalRaidDamage} />}
          {activeTab === 'GROUP' && <GroupRaidView 
                 roomData={roomData}
@@ -197,7 +205,9 @@ export default function App() {
                             <div className="absolute top-0 w-8 h-0.5 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)] rounded-full"></div>
                         )}
                         <Icon size={22} className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-active:scale-95'}`} />
-                        <span className="text-[9px] font-bold tracking-wide">{tab.label}</span>
+                        {isActive && (
+                            <span className="text-[9px] font-bold tracking-wide animate-in fade-in duration-200">{tab.label}</span>
+                        )}
                     </button>
                 );
             })}

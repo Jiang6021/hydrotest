@@ -67,3 +67,19 @@ export const DAILY_QUESTS: QuestDef[] = [
     { id: 'q_stand', label: 'Stand up & Move', icon: '🚶' },
     { id: 'q_clean', label: 'Tidy your desk', icon: '🧹' },
 ];
+
+export const RANDOM_TASKS = [
+    "閉眼休息 30 秒",
+    "清空手機通知",
+    "曬太陽發呆 5 分鐘",
+    "對著牆壁發呆 1 分鐘",
+    "伸展一下背部",
+    "深呼吸 10 次",
+    "喝一杯水",
+    "整理桌面",
+    "聽一首喜歡的歌",
+    "寫下 3 件優先事項",
+    "做 5 個開合跳",
+    "傳訊息給一位朋友",
+    "檢查你的坐姿"
+];

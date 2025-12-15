@@ -78,7 +78,8 @@ class GameService {
           totalDamageDealt: 0,
           joinedAt: Date.now(),
           inventory: [],
-          completedQuests: []
+          completedQuests: [],
+          todos: {}
         };
         
         // Increase Boss HP for new player challenge (Scaling)
@@ -255,57 +256,85 @@ class GameService {
       }
   }
 
+  // --- NEW: Custom Todo Logic ---
+  async addTodoTransaction(roomId: string, playerId: string, task: { label: string, note: string, importance: number, difficulty: number }): Promise<boolean> {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+              if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+              
+              const player = currentData.players[playerId];
+              if (!player.todos) player.todos = {};
+              
+              const todoId = `todo_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+              player.todos[todoId] = {
+                  id: todoId,
+                  label: task.label,
+                  note: task.note,
+                  importance: task.importance,
+                  difficulty: task.difficulty,
+                  isCompleted: false,
+                  createdAt: Date.now()
+              };
+              return currentData;
+          });
+          return true;
+      } catch (e) {
+          console.error("Add Todo Failed", e);
+          return false;
+      }
+  }
+
+  async completeTodoTransaction(roomId: string, playerId: string, todoId: string): Promise<{ success: boolean; drop: string }> {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      let resultDrop = "";
+
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+              if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+              
+              const player = currentData.players[playerId];
+              if (!player.todos || !player.todos[todoId]) return;
+
+              // Remove the todo (or mark completed)
+              // Design choice: Remove it to keep list clean, but grant reward
+              const taskLabel = player.todos[todoId].label;
+              delete player.todos[todoId];
+
+              // Guaranteed Drop (similar to legacy quest)
+              if (!player.inventory) player.inventory = [];
+              const randomTrinket = TRINKETS[Math.floor(Math.random() * TRINKETS.length)];
+              player.inventory.push(randomTrinket);
+              resultDrop = randomTrinket;
+
+              // Log
+              const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+              if (!currentData.logs) currentData.logs = {};
+              currentData.logs[logId] = {
+                  id: logId,
+                  timestamp: Date.now(),
+                  userId: playerId,
+                  userName: player.name,
+                  actionType: ActionType.QUEST,
+                  value: taskLabel,
+                  damageDealt: 0,
+                  message: `completed task: "${taskLabel}" and found ${randomTrinket}!`
+              };
+
+              return currentData;
+          });
+
+          if (resultDrop) return { success: true, drop: resultDrop };
+          return { success: false, drop: "" };
+      } catch (e) {
+          console.error("Complete Todo Failed", e);
+          return { success: false, drop: "" };
+      }
+  }
+
   async completeQuestTransaction(roomId: string, playerId: string, questId: string, questName: string): Promise<{ success: boolean; drop: string }> {
-    const roomRef = ref(db, `rooms/${roomId}`);
-    const todayStr = new Date().toDateString();
-    let resultDrop = "";
-
-    try {
-        await runTransaction(roomRef, (currentData: any) => {
-            if (!currentData || !currentData.players || !currentData.players[playerId]) return;
-            
-            // Daily Reset Check
-            if (currentData.lastActiveDate !== todayStr) {
-                this.performDailyReset(currentData, todayStr);
-            }
-
-            const player = currentData.players[playerId];
-
-            if (!player.completedQuests) player.completedQuests = [];
-            if (player.completedQuests.includes(questId)) return; // Already done
-
-            // Mark completed
-            player.completedQuests.push(questId);
-
-            // Guaranteed Drop
-            if (!player.inventory) player.inventory = [];
-            const randomTrinket = TRINKETS[Math.floor(Math.random() * TRINKETS.length)];
-            player.inventory.push(randomTrinket);
-            resultDrop = randomTrinket;
-
-            // Log
-            const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            if (!currentData.logs) currentData.logs = {};
-            currentData.logs[logId] = {
-                id: logId,
-                timestamp: Date.now(),
-                userId: playerId,
-                userName: player.name,
-                actionType: ActionType.QUEST,
-                value: questName,
-                damageDealt: 0,
-                message: `completed quest: ${questName} and found ${randomTrinket}!`
-            };
-
-            return currentData;
-        });
-
-        if (resultDrop) return { success: true, drop: resultDrop };
-        return { success: false, drop: "" };
-    } catch (e) {
-        console.error("Quest Transaction Failed", e);
-        return { success: false, drop: "" };
-    }
+      // Legacy function kept for compatibility if needed, but primarily using todos now
+      return { success: false, drop: "" };
   }
 
   async submitGratitudeTransaction(roomId: string, playerId: string, text: string): Promise<BuffType> {
@@ -371,8 +400,7 @@ class GameService {
                       p.todayWaterMl = 0;
                       p.attacksPerformed = 0;
                       p.activeBuff = BuffType.NONE;
-                      // Don't reset totalDamageDealt completely so we see history, or reset if desired. 
-                      // Let's keep total damage but reset daily charges.
+                      p.todos = {}; // Clear todos on debug reset
                   });
               }
 
@@ -439,6 +467,7 @@ class GameService {
               p.todayWaterMl = 0;
               p.attacksPerformed = 0; // Reset attacks
               p.completedQuests = [];
+              p.todos = {}; // Reset daily todos
               if (p.hp <= 0) p.hp = MAX_PLAYER_LIVES; // Revive if dead
           });
       }

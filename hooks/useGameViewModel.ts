@@ -162,28 +162,51 @@ export const useGameViewModel = () => {
       }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
 
+  // New: Add Todo (Enhanced)
+  const addTodo = useCallback(async (task: { label: string, note?: string, importance: number, difficulty: number }) => {
+      if (!currentRoomId || !myPlayerId || isProcessing) return;
+      setIsProcessing(true);
+      try {
+          await gameService.addTodoTransaction(currentRoomId, myPlayerId, {
+            label: task.label,
+            note: task.note || '',
+            importance: task.importance,
+            difficulty: task.difficulty
+          });
+      } catch (e) {
+          console.error("Add Todo failed", e);
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [currentRoomId, myPlayerId, isProcessing]);
 
-  const completeQuest = useCallback(async (questId: string, questName: string) => {
+  // New: Complete Todo
+  const completeTodo = useCallback(async (todoId: string) => {
       if (!currentRoomId || !myPlayerId || isProcessing) return;
       setIsProcessing(true);
       setLastActionFeedback(null);
 
       try {
-        const result = await gameService.completeQuestTransaction(currentRoomId, myPlayerId, questId, questName);
+        const result = await gameService.completeTodoTransaction(currentRoomId, myPlayerId, todoId);
         if (result.success) {
              setLastActionFeedback({
-                msg: 'QUEST COMPLETE!',
+                msg: 'TASK COMPLETE!',
                 val: 0,
                 drop: result.drop
             });
             setTimeout(() => setLastActionFeedback(null), 3000);
         }
       } catch (e) {
-          console.error("Quest failed", e);
+          console.error("Complete Todo failed", e);
       } finally {
           setIsProcessing(false);
       }
   }, [currentRoomId, myPlayerId, isProcessing]);
+
+  // Legacy (Keep for compatibility if needed)
+  const completeQuest = useCallback(async (questId: string, questName: string) => {
+      // No-op for now, replaced by completeTodo
+  }, []);
 
   const submitGratitude = useCallback(async (text: string) => {
     if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
@@ -218,8 +241,10 @@ export const useGameViewModel = () => {
     logout, 
     drinkWater,
     performAttack,
+    addTodo,      // New
+    completeTodo, // New
     completeQuest,
     submitGratitude,
-    debugRespawn // Exported
+    debugRespawn
   };
 };
