@@ -114,17 +114,14 @@ class GameService {
           attacksPerformed: 0,
           totalDamageDealt: 0,
           joinedAt: Date.now(),
+          isParticipatingToday: false, // Default to false, must opt-in
           inventory: [],
           completedQuests: [],
           todos: {}
         };
         
-        // Increase Boss HP for new player challenge (Scaling)
-        if (currentData.boss && !currentData.boss.isDefeated) {
-             currentData.boss.maxHp = (currentData.boss.maxHp || BOSS_MAX_HP) + BOSS_HP_PER_PLAYER;
-             currentData.boss.currentHp = (currentData.boss.currentHp || BOSS_MAX_HP) + BOSS_HP_PER_PLAYER;
-        }
-
+        // REMOVED: Boss HP scaling on join. Now happens in joinRaidTransaction.
+        
         // Log new player
         const logId = `sys_${Date.now()}`;
         if (!currentData.logs) currentData.logs = {};
@@ -136,7 +133,7 @@ class GameService {
             actionType: ActionType.GRATITUDE,
             value: '',
             damageDealt: 0,
-            message: `${playerName} joined the party! Boss HP increased!`
+            message: `${playerName} entered the lobby.`
         };
       } else {
         // Update name if they changed it, but keep stats
@@ -144,10 +141,67 @@ class GameService {
         if (currentData.players[playerId].attacksPerformed === undefined) {
             currentData.players[playerId].attacksPerformed = 0;
         }
+        if (currentData.players[playerId].isParticipatingToday === undefined) {
+            currentData.players[playerId].isParticipatingToday = false;
+        }
       }
 
       return currentData;
     });
+  }
+
+  // --- NEW: Opt-in to Raid Transaction ---
+  async joinRaidTransaction(roomId: string, playerId: string): Promise<boolean> {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      const todayStr = new Date().toDateString();
+
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+             if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+
+             // Check Daily Reset logic first to be safe
+             if (currentData.lastActiveDate !== todayStr) {
+                 this.performDailyReset(currentData, todayStr);
+             }
+
+             const player = currentData.players[playerId];
+             
+             // If already participating, do nothing
+             if (player.isParticipatingToday) return;
+
+             // 1. Mark as participating
+             player.isParticipatingToday = true;
+
+             // 2. Scale Boss (Increase Max and Current HP)
+             // Only scale if boss is not defeated (or maybe even if defeated, to reset for next logic? kept simple for now)
+             if (currentData.boss) {
+                 currentData.boss.maxHp = (currentData.boss.maxHp || BOSS_MAX_HP) + BOSS_HP_PER_PLAYER;
+                 if (!currentData.boss.isDefeated) {
+                     currentData.boss.currentHp = (currentData.boss.currentHp || 0) + BOSS_HP_PER_PLAYER;
+                 }
+             }
+
+             // 3. Log
+             const logId = `sys_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+             if (!currentData.logs) currentData.logs = {};
+             currentData.logs[logId] = {
+                 id: logId,
+                 timestamp: Date.now(),
+                 userId: playerId,
+                 userName: player.name,
+                 actionType: ActionType.QUEST,
+                 value: '',
+                 damageDealt: 0,
+                 message: `joined the raid! Boss HP Scaled up!`
+             };
+
+             return currentData;
+          });
+          return true;
+      } catch (e) {
+          console.error("Join Raid Failed", e);
+          return false;
+      }
   }
 
   // Pure Hydration Transaction
@@ -425,10 +479,11 @@ class GameService {
               
               currentData.status = 'ACTIVE';
               
-              // Reset Boss
+              // Reset Boss to Base
               if (currentData.boss) {
                 currentData.boss.isDefeated = false;
-                currentData.boss.currentHp = currentData.boss.maxHp;
+                currentData.boss.maxHp = BOSS_MAX_HP; // Reset to base, don't scale yet
+                currentData.boss.currentHp = BOSS_MAX_HP;
               }
 
               // Reset All Players Daily Stats to allow testing
@@ -438,11 +493,14 @@ class GameService {
                       p.attacksPerformed = 0;
                       p.activeBuff = BuffType.NONE;
                       p.todos = {}; // Clear todos on debug reset
+                      p.isParticipatingToday = false; // Reset participation
                   });
               }
+              
+              // *** NEW: Clear Logs on Debug Reset ***
+              currentData.logs = {};
 
               const logId = `sys_debug_${Date.now()}`;
-              if (!currentData.logs) currentData.logs = {};
               currentData.logs[logId] = {
                   id: logId,
                   timestamp: Date.now(),
@@ -451,7 +509,7 @@ class GameService {
                   actionType: ActionType.GRATITUDE,
                   value: '',
                   damageDealt: 0,
-                  message: `DEBUG: Boss respawned & Player daily stats reset!`
+                  message: `DEBUG: Boss respawned, Stats reset, Logs cleared!`
               };
               
               return currentData;
@@ -487,31 +545,32 @@ class GameService {
       currentData.lastActiveDate = todayStr;
       currentData.status = 'ACTIVE';
       
-      // Respawn Boss
+      // Respawn Boss with BASE HP (No scaling yet)
       if (currentData.boss) {
           currentData.boss.isDefeated = false;
-          // Calculate max HP based on current players for scaling
-          const playerCount = Object.keys(currentData.players || {}).length;
-          // Updated Scaling logic: Requires teamwork and buffs
-          const scaledHp = BOSS_MAX_HP + (playerCount * BOSS_HP_PER_PLAYER);
-          currentData.boss.maxHp = scaledHp;
-          currentData.boss.currentHp = scaledHp;
+          // Updated Scaling logic: Start with Base HP. Players must join to increase it.
+          const startHp = BOSS_MAX_HP;
+          currentData.boss.maxHp = startHp;
+          currentData.boss.currentHp = startHp;
       }
 
-      // Reset Player Daily Stats
+      // Reset Player Daily Stats & Participation
       if (currentData.players) {
           Object.values(currentData.players).forEach((p: any) => {
               p.todayWaterMl = 0;
               p.attacksPerformed = 0; // Reset attacks
               p.completedQuests = [];
               p.todos = {}; // Reset daily todos
+              p.isParticipatingToday = false; // Reset Participation
               if (p.hp <= 0) p.hp = MAX_PLAYER_LIVES; // Revive if dead
           });
       }
+      
+      // *** NEW: Clear Logs for the new day ***
+      currentData.logs = {};
 
       // System Log
       const logId = `sys_reset_${Date.now()}`;
-      if (!currentData.logs) currentData.logs = {};
       currentData.logs[logId] = {
           id: logId,
           timestamp: Date.now(),
@@ -520,7 +579,7 @@ class GameService {
           actionType: ActionType.GRATITUDE,
           value: '',
           damageDealt: 0,
-          message: `A new day dawns! The Demon returns stronger!`
+          message: `A new day dawns! Logs cleared. Join the raid!`
       };
   }
 }

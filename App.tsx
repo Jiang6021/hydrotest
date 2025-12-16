@@ -45,6 +45,7 @@ export default function App() {
     isLoggedIn,
     joinGame,
     logout,
+    joinRaid,      // New Hook
     drinkWater,
     addTodo,       // New
     completeTodo,  // New
@@ -157,6 +158,7 @@ export default function App() {
                 currentPlayer={currentPlayer}
                 otherPlayers={otherPlayers}
                 logs={logs}
+                onJoinRaid={joinRaid} // Pass join func
                 onDrink={drinkWater}
                 onAttack={performAttack}
                 onOpenGratitude={() => setShowGratitudeModal(true)}

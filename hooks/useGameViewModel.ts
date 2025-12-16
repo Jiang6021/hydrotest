@@ -126,6 +126,20 @@ export const useGameViewModel = () => {
         .sort((a, b) => b.totalDamageDealt - a.totalDamageDealt) 
     : [];
 
+  // Join Daily Raid (Opt-in)
+  const joinRaid = useCallback(async () => {
+      if (!currentRoomId || !myPlayerId || isProcessing) return;
+      setIsProcessing(true);
+      try {
+          await gameService.joinRaidTransaction(currentRoomId, myPlayerId);
+      } catch (e) {
+          console.error("Join Raid failed", e);
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [currentRoomId, myPlayerId, isProcessing]);
+
+
   // Only Hydrates (no damage)
   const drinkWater = useCallback(async (ml: number) => {
     if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
@@ -250,7 +264,8 @@ export const useGameViewModel = () => {
     lastActionFeedback,
     isLoggedIn: !!myPlayerId && !!currentRoomId, 
     joinGame,
-    logout, 
+    logout,
+    joinRaid, // New
     drinkWater,
     performAttack,
     addTodo,      // New

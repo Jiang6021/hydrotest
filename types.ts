@@ -24,6 +24,7 @@ export interface Player {
   attacksPerformed: number; // New: Tracks daily attacks used
   totalDamageDealt: number; // For leaderboard
   joinedAt: number;
+  isParticipatingToday?: boolean; // New: Track daily raid participation
   inventory?: string[]; // Cute trinkets collection
   completedQuests?: string[]; // Keep for legacy or achievements
   todos?: Record<string, TodoItem>; // New: Custom Todo List

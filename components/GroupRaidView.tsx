@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Boss, Player, GameLog, RoomData } from '../types';
 import { BossCard } from './BossCard';
-import { Droplets, Trophy, Sword, Heart, Sparkles, RotateCcw, Zap, List } from 'lucide-react'; // Import List icon for Logs tab
+import { Droplets, Trophy, Sword, Heart, Sparkles, RotateCcw, Zap, List, AlertCircle, Fingerprint } from 'lucide-react'; // Import List icon for Logs tab
 import { BuffType, DAILY_WATER_GOAL, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS, SIP_VOLUME, ActionType } from '../constants';
 
 type RaidSubTab = '排行' | '動態'; // Define sub-tab types: Changed to Chinese
@@ -11,6 +12,7 @@ interface GroupRaidViewProps {
   currentPlayer: Player;
   otherPlayers: Player[];
   logs: GameLog[];
+  onJoinRaid: () => void; // New prop
   onDrink: (ml: number) => void;
   onAttack: () => void;
   onOpenGratitude: () => void;
@@ -24,6 +26,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   currentPlayer, 
   otherPlayers, 
   logs, 
+  onJoinRaid,
   onDrink, 
   onAttack,
   onOpenGratitude,
@@ -33,8 +36,14 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
 }) => {
   const boss = roomData.boss;
   const hasBuff = currentPlayer.activeBuff !== BuffType.NONE;
-  const totalRaidDamage = otherPlayers.reduce((acc, p) => acc + p.totalDamageDealt, 0);
+  
+  // Filter active participants for stats calculation
+  const participatingPlayers = otherPlayers.filter(p => p.isParticipatingToday);
+  const totalRaidDamage = participatingPlayers.reduce((acc, p) => acc + p.totalDamageDealt, 0);
+  const activeCount = participatingPlayers.length;
+
   const isJustAction = lastActionFeedback !== null;
+  const isParticipating = currentPlayer.isParticipatingToday;
   
   // Local state to handle victory modal dismissal
   const [isVictoryDismissed, setIsVictoryDismissed] = useState(false);
@@ -54,12 +63,12 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   const nextAttackProgress = (currentPlayer.todayWaterMl % WATER_PER_ATTACK_CHARGE) / WATER_PER_ATTACK_CHARGE * 100;
   const isMaxDailyReached = attacksPerformed >= MAX_DAILY_ATTACKS;
   
-  // Sort players by damage
-  const sortedPlayers = [...otherPlayers].sort((a,b) => b.totalDamageDealt - a.totalDamageDealt);
+  // Sort players by damage (only participating)
+  const sortedPlayers = [...participatingPlayers].sort((a,b) => b.totalDamageDealt - a.totalDamageDealt);
   const mvp = sortedPlayers.length > 0 ? sortedPlayers[0] : null;
 
   return (
-    <div className="space-y-5 animate-in slide-in-from-right-8 duration-300 fade-in pb-20 pt-2">
+    <div className="space-y-5 animate-in slide-in-from-right-8 duration-300 fade-in pb-20 pt-2 relative">
         
         {/* Boss Section (Always Visible) */}
         {boss && (
@@ -71,12 +80,35 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
         )}
 
         {/* --- UNIFIED CARD: CONTROL PANEL + TABS --- */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm relative overflow-hidden">
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm relative overflow-hidden min-h-[220px]">
             {/* Background FX */}
             <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none bg-gradient-to-b from-transparent to-slate-800"></div>
 
-            {/* --- CONTROL PANEL CONTENT --- */}
-            <div className="p-4 relative z-10">
+            {/* --- NON-PARTICIPANT OVERLAY (MISSION BRIEFING) --- */}
+            {!isParticipating && !boss?.isDefeated && (
+                <div className="absolute inset-0 z-50 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+                    <div className="mb-4 text-orange-500 animate-pulse">
+                        <AlertCircle size={48} />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2 font-pixel tracking-wide">MISSION BRIEFING</h3>
+                    <p className="text-slate-400 text-sm mb-6 max-w-xs leading-relaxed">
+                        The Demon waits. <br/>
+                        <span className="text-cyan-400">Join {activeCount} other hunters?</span> <br/>
+                        <span className="text-xs text-slate-500 mt-2 block">(Difficulty scales with active players)</span>
+                    </p>
+                    <button 
+                        onClick={onJoinRaid}
+                        disabled={isProcessing}
+                        className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(234,88,12,0.4)] flex items-center justify-center gap-2 transform active:scale-95 transition-all"
+                    >
+                         <Fingerprint size={20} />
+                         {isProcessing ? 'INITIALIZING...' : 'ACCEPT MISSION'}
+                    </button>
+                </div>
+            )}
+
+            {/* --- CONTROL PANEL CONTENT (Blurred/Disabled if not participating) --- */}
+            <div className={`p-4 relative z-10 transition-opacity duration-500 ${!isParticipating ? 'opacity-20 pointer-events-none filter blur-sm' : 'opacity-100'}`}>
                 {/* Attack Status Header */}
                 <div className="flex justify-between items-center mb-4 relative z-10">
                     <div className="flex items-center gap-2">
@@ -241,41 +273,48 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
                 {/* Header Block Removed */}
                 
                 <div className="divide-y divide-slate-800/50 max-h-60 overflow-y-auto custom-scrollbar">
-                    {otherPlayers.map((p, index) => {
-                    const contribution = totalRaidDamage > 0 ? Math.round((p.totalDamageDealt / totalRaidDamage) * 100) : 0;
-                    const isMe = p.id === currentPlayer?.id;
-                    
-                    return (
-                        <div key={p.id} className={`flex items-center p-3 text-sm transition-all ${isMe ? 'bg-amber-900/10 border-l-2 border-amber-500' : ''}`}>
-                            <div className={`w-6 text-center font-pixel text-xs mr-2 ${index < 3 ? 'text-yellow-400' : 'text-slate-600'}`}>
-                                {index + 1}
-                            </div>
-                            
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={`font-bold text-xs ${isMe ? 'text-amber-300' : 'text-slate-300'}`}>
-                                        {p.name}
-                                    </span>
-                                    {p.hp <= 0 && <span className="text-[9px] bg-red-900 text-red-300 px-1 rounded">KO</span>}
+                    {/* EMPTY STATE FOR RANKING */}
+                    {participatingPlayers.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500 text-xs">
+                            No hunters active yet today.
+                        </div>
+                    ) : (
+                        sortedPlayers.map((p, index) => {
+                        const contribution = totalRaidDamage > 0 ? Math.round((p.totalDamageDealt / totalRaidDamage) * 100) : 0;
+                        const isMe = p.id === currentPlayer?.id;
+                        
+                        return (
+                            <div key={p.id} className={`flex items-center p-3 text-sm transition-all ${isMe ? 'bg-amber-900/10 border-l-2 border-amber-500' : ''}`}>
+                                <div className={`w-6 text-center font-pixel text-xs mr-2 ${index < 3 ? 'text-yellow-400' : 'text-slate-600'}`}>
+                                    {index + 1}
                                 </div>
                                 
-                                {/* Water Bar for everyone */}
-                                <div className="w-full h-1.5 bg-slate-800 rounded-full flex gap-0.5">
-                                    <div 
-                                        className="h-full bg-cyan-500 rounded-full" 
-                                        style={{width: `${Math.min((p.todayWaterMl/DAILY_WATER_GOAL)*100, 100)}%`}}
-                                    ></div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className={`font-bold text-xs ${isMe ? 'text-amber-300' : 'text-slate-300'}`}>
+                                            {p.name}
+                                        </span>
+                                        {p.hp <= 0 && <span className="text-[9px] bg-red-900 text-red-300 px-1 rounded">KO</span>}
+                                    </div>
+                                    
+                                    {/* Water Bar for everyone */}
+                                    <div className="w-full h-1.5 bg-slate-800 rounded-full flex gap-0.5">
+                                        <div 
+                                            className="h-full bg-cyan-500 rounded-full" 
+                                            style={{width: `${Math.min((p.todayWaterMl/DAILY_WATER_GOAL)*100, 100)}%`}}
+                                        ></div>
+                                    </div>
+                                    <div className="text-[9px] text-slate-500 text-right mt-0.5">{p.todayWaterMl}ml</div>
                                 </div>
-                                <div className="text-[9px] text-slate-500 text-right mt-0.5">{p.todayWaterMl}ml</div>
-                            </div>
 
-                            <div className="text-right pl-4">
-                                <div className="font-mono text-orange-400 font-bold text-xs">{p.totalDamageDealt}</div>
-                                <div className="text-[9px] text-slate-600">{contribution}%</div>
+                                <div className="text-right pl-4">
+                                    <div className="font-mono text-orange-400 font-bold text-xs">{p.totalDamageDealt}</div>
+                                    <div className="text-[9px] text-slate-600">{contribution}%</div>
+                                </div>
                             </div>
-                        </div>
-                    );
-                    })}
+                        );
+                        })
+                    )}
                 </div>
             </div>
         )}
