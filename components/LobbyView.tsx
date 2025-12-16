@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Player } from '../types';
-import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp } from 'lucide-react';
+import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw } from 'lucide-react';
 import { CreateTaskView } from './CreateTaskView';
 
 interface LobbyViewProps {
@@ -16,38 +16,55 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
   // State to toggle full screen Create View
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   
+  // Track tasks we have already shown to the user in this session to prevent repeats
+  const [seenTasks, setSeenTasks] = useState<Set<string>>(new Set());
+  const [isExhausted, setIsExhausted] = useState(false);
+  
   // Random Task Logic
-  // Initial state uses the passed randomTasks prop
-  const [randomTaskSuggestion, setRandomTaskSuggestion] = useState(() => {
-    return randomTasks.length > 0 
-        ? randomTasks[Math.floor(Math.random() * randomTasks.length)]
-        : "Loading tasks...";
-  });
+  const [randomTaskSuggestion, setRandomTaskSuggestion] = useState("Loading tasks...");
 
-  // Effect to update suggestion if randomTasks loads later (or changes) and we have a placeholder
+  // Effect to Initialize the first task
   useEffect(() => {
-      if (randomTasks.length > 0 && (randomTaskSuggestion === "Loading tasks..." || !randomTasks.includes(randomTaskSuggestion))) {
-          setRandomTaskSuggestion(randomTasks[Math.floor(Math.random() * randomTasks.length)]);
+      // Only run if we have tasks, haven't picked one yet (or it's the loading state), and haven't exhausted list
+      if (randomTasks.length > 0 && (randomTaskSuggestion === "Loading tasks..." || !randomTasks.includes(randomTaskSuggestion)) && !isExhausted) {
+          
+          // Pick a random one initially
+          const initialTask = randomTasks[Math.floor(Math.random() * randomTasks.length)];
+          
+          setRandomTaskSuggestion(initialTask);
+          setSeenTasks(new Set([initialTask])); // Mark as seen
       }
-  }, [randomTasks, randomTaskSuggestion]);
+  }, [randomTasks, randomTaskSuggestion, isExhausted]);
 
   const handleShuffle = () => {
-    if (randomTasks.length > 0) {
-        let newTask = randomTaskSuggestion;
-        // Simple retry to get a different task if possible
-        for (let i = 0; i < 5; i++) {
-            const candidate = randomTasks[Math.floor(Math.random() * randomTasks.length)];
-            if (candidate !== randomTaskSuggestion) {
-                newTask = candidate;
-                break;
-            }
-        }
-        setRandomTaskSuggestion(newTask);
+    // 1. Check if valid
+    if (!randomTasks || randomTasks.length === 0) return;
+    
+    // 2. Filter out tasks that are already in the seen set
+    const availableTasks = randomTasks.filter(task => !seenTasks.has(task));
+
+    // 3. Check if we ran out of new tasks
+    if (availableTasks.length === 0) {
+        setRandomTaskSuggestion("哎呀！目前沒有隨機任務啦！");
+        setIsExhausted(true);
+        return;
     }
+
+    // 4. Pick a random task from the AVAILABLE pool
+    const randomIndex = Math.floor(Math.random() * availableTasks.length);
+    const newTask = availableTasks[randomIndex];
+
+    // 5. Update state
+    setRandomTaskSuggestion(newTask);
+    setSeenTasks(prev => {
+        const newSet = new Set(prev);
+        newSet.add(newTask);
+        return newSet;
+    });
   };
 
   const handleAcceptRandom = () => {
-    if (onAddTodo) {
+    if (onAddTodo && !isExhausted) {
         onAddTodo({
             label: randomTaskSuggestion,
             note: '來自隨機任務建議',
@@ -86,8 +103,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
         
         {/* Welcome Header */}
         <div className="pt-4 px-2">
-            <h2 className="text-2xl font-bold text-white mb-1">早安，{player.name}</h2>
-            <p className="text-slate-400 text-xs">積少成多，邁向勝利。</p>
+            <h2 className="text-2xl font-bold text-white mb-1">Good day, {player.name}</h2>
+            <p className="text-slate-400 text-xs">One step closer, Merry Chrismas</p>
         </div>
 
         {/* Daily Momentum Card */}
@@ -108,37 +125,60 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
 
         {/* Task List or Random Suggestion */}
         <div className="space-y-3 px-1">
-            <h3 className="text-slate-400 text-xs font-bold uppercase px-2">您的焦點</h3>
+            
             
             {todoList.length === 0 ? (
                 // --- RANDOM SUGGESTION CARD (Empty State) ---
-                <div className="bg-slate-800/50 border border-dashed border-slate-600 rounded-2xl p-6 text-center animate-in zoom-in duration-300 flex flex-col items-center gap-4">
-                    <div className="bg-slate-700/50 p-4 rounded-full mb-2">
-                        <Sun className="text-yellow-200" size={32} />
-                    </div>
-                    <div>
-                        <h3 className="text-white font-bold text-lg mb-1">找點有趣的事情做...</h3>
-                        <p className="text-slate-400 text-sm">試試看這個如何：</p>
-                    </div>
-                    
-                    <div className="bg-slate-900 w-full p-4 rounded-xl border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.1)]">
-                        <p className="text-xl font-bold text-indigo-300">{randomTaskSuggestion}</p>
-                    </div>
+                <div className="flex flex-col gap-8">
+                    <div className="bg-slate-800/50 border border-dashed border-slate-600 rounded-2xl p-6 text-center animate-in zoom-in duration-300 flex flex-col items-center gap-4">
+                        <div className="bg-slate-700/50 p-4 rounded-full mb-2">
+                            <Sun className="text-yellow-200" size={32} />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-lg mb-1">找點有趣的事情做...</h3>
+                            <p className="text-slate-400 text-sm">試試看這個如何：</p>
+                        </div>
+                        
+                        <div className={`relative w-full p-6 rounded-xl border transition-colors shadow-[0_0_15px_rgba(99,102,241,0.1)] mt-2
+                            ${isExhausted ? 'bg-slate-800 border-red-900/50' : 'bg-slate-900 border-indigo-500/30'}
+                        `}>
+                            {/* Shuffle Button (Top Right) */}
+                            <button 
+                                onClick={handleShuffle}
+                                disabled={isExhausted}
+                                className={`absolute top-2 right-2 p-2 rounded-full transition-all hover:scale-110 active:scale-95
+                                    ${isExhausted 
+                                        ? 'text-slate-600 cursor-not-allowed' 
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                    }
+                                `}
+                                title="換一個任務"
+                            >
+                                <RotateCcw size={16} />
+                            </button>
 
-                    <div className="flex gap-3 w-full mt-2">
-                        <button 
-                            onClick={handleShuffle}
-                            className="flex-1 py-3 rounded-xl border border-slate-600 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors flex items-center justify-center gap-2 text-xs font-bold uppercase"
-                        >
-                            <Shuffle size={14} /> 換一個
-                        </button>
+                            <p className={`text-xl font-bold px-2 py-4 ${isExhausted ? 'text-slate-500' : 'text-indigo-300'}`}>
+                                {randomTaskSuggestion}
+                            </p>
+                        </div>
+
                         <button 
                             onClick={handleAcceptRandom}
-                            disabled={isProcessing}
-                            className="flex-1 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2 text-xs font-bold uppercase shadow-lg shadow-indigo-900/20"
+                            disabled={isProcessing || isExhausted}
+                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase shadow-lg transition-colors mt-2
+                                ${isExhausted
+                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20 active:scale-[0.98]'
+                                }
+                            `}
                         >
-                            <ThumbsUp size={14} /> 接受挑戰
+                            <ThumbsUp size={18} /> 接受挑戰
                         </button>
+                    </div>
+                    
+                    {/* Empty State Text */}
+                    <div className="text-center space-y-2 opacity-80 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
+                        <p className="text-slate-400 text-sm font-medium">暫無任務，嘗試新增一些吧！</p>
                     </div>
                 </div>
             ) : (
