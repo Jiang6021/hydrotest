@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { Player } from '../types';
-import { RANDOM_TASKS } from '../constants';
 import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp } from 'lucide-react';
 import { CreateTaskView } from './CreateTaskView';
 
@@ -9,19 +9,41 @@ interface LobbyViewProps {
   onCompleteQuest: (todoId: string) => void;
   onAddTodo?: (task: { label: string, note?: string, importance: number, difficulty: number }) => void;
   isProcessing: boolean;
+  randomTasks: string[]; // Receives dynamic tasks from DB
 }
 
-export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, onAddTodo, isProcessing }) => {
+export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, onAddTodo, isProcessing, randomTasks }) => {
   // State to toggle full screen Create View
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   
   // Random Task Logic
+  // Initial state uses the passed randomTasks prop
   const [randomTaskSuggestion, setRandomTaskSuggestion] = useState(() => {
-    return RANDOM_TASKS[Math.floor(Math.random() * RANDOM_TASKS.length)];
+    return randomTasks.length > 0 
+        ? randomTasks[Math.floor(Math.random() * randomTasks.length)]
+        : "Loading tasks...";
   });
 
+  // Effect to update suggestion if randomTasks loads later (or changes) and we have a placeholder
+  useEffect(() => {
+      if (randomTasks.length > 0 && (randomTaskSuggestion === "Loading tasks..." || !randomTasks.includes(randomTaskSuggestion))) {
+          setRandomTaskSuggestion(randomTasks[Math.floor(Math.random() * randomTasks.length)]);
+      }
+  }, [randomTasks, randomTaskSuggestion]);
+
   const handleShuffle = () => {
-    setRandomTaskSuggestion(RANDOM_TASKS[Math.floor(Math.random() * RANDOM_TASKS.length)]);
+    if (randomTasks.length > 0) {
+        let newTask = randomTaskSuggestion;
+        // Simple retry to get a different task if possible
+        for (let i = 0; i < 5; i++) {
+            const candidate = randomTasks[Math.floor(Math.random() * randomTasks.length)];
+            if (candidate !== randomTaskSuggestion) {
+                newTask = candidate;
+                break;
+            }
+        }
+        setRandomTaskSuggestion(newTask);
+    }
   };
 
   const handleAcceptRandom = () => {
@@ -157,9 +179,13 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
         {/* Floating Action Button */}
         <button 
             onClick={() => setIsCreatingTask(true)}
-            className="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-full shadow-[0_4px_14px_rgba(0,255,255,0.4)] flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all z-50 border-2 border-cyan-300"
+            className="group fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-full shadow-[0_4px_14px_rgba(0,255,255,0.4)] flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all z-50 border-2 border-cyan-300"
         >
             <Plus size={32} />
+            {/* Tooltip on Hover/Touch */}
+            <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-600 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                建立待辦事項
+            </span>
         </button>
     </div>
   );

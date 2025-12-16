@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { RoomData, Player, GameLog } from '../types';
 import { gameService } from '../services/gameService';
@@ -35,6 +36,7 @@ const safeStorage = {
 
 export const useGameViewModel = () => {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
+  const [randomTasks, setRandomTasks] = useState<string[]>([]);
   
   // Initialize from localStorage safely
   const [myPlayerId, setMyPlayerId] = useState<string | null>(() => {
@@ -47,6 +49,15 @@ export const useGameViewModel = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number, drop?: string | null} | null>(null);
+
+  useEffect(() => {
+    // Subscribe to Global Random Tasks (Run once on mount)
+    const unsubscribeTasks = gameService.subscribeToRandomTasks(setRandomTasks);
+
+    return () => {
+        unsubscribeTasks();
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentRoomId) return;
@@ -233,6 +244,7 @@ export const useGameViewModel = () => {
     otherPlayers, 
     boss,
     logs,
+    randomTasks, // Exported to View
     loading: false, 
     isProcessing,
     lastActionFeedback,

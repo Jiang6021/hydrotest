@@ -1,3 +1,4 @@
+
 import { RoomData, GameLog, Player } from '../types';
 import { BuffType, ActionType, DAMAGE_PER_DRINK, BOSS_MAX_HP, BOSS_HP_PER_PLAYER, MAX_PLAYER_LIVES, TRINKETS, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS } from '../constants';
 import { db } from '../firebaseConfig';
@@ -28,6 +29,42 @@ class GameService {
       } else {
         callback(null); 
       }
+    });
+
+    return () => unsubscribe();
+  }
+
+  // --- NEW: Subscribe to Global Random Tasks ---
+  subscribeToRandomTasks(callback: (tasks: string[]) => void): () => void {
+    const tasksRef = ref(db, 'randomTasks');
+    
+    // Listen to changes
+    const unsubscribe = onValue(tasksRef, (snapshot) => {
+        const val = snapshot.val();
+        let loadedTasks: string[] = [];
+        
+        console.log("🔥 [Firebase] randomTasks raw data:", val); // Debugging Log
+
+        if (val) {
+            if (Array.isArray(val)) {
+                // If it's a simple array ["task1", "task2"]
+                loadedTasks = val.filter((t: any) => typeof t === 'string') as string[];
+            } else if (typeof val === 'object') {
+                // If it's an object map {"id1": "task1", "id2": "task2"}
+                loadedTasks = Object.values(val as object).filter((t: any) => typeof t === 'string') as string[];
+            }
+        }
+
+        if (loadedTasks.length > 0) {
+            console.log("✅ [Firebase] Using remote tasks:", loadedTasks);
+            callback(loadedTasks);
+        } else {
+            console.log("⚠️ [Firebase] No remote tasks found.");
+            callback(["等待任務發布..."]);
+        }
+    }, (error) => {
+        console.error("❌ [Firebase] Read failed (Check Rules):", error);
+        callback(["連線錯誤", "請檢查網路"]);
     });
 
     return () => unsubscribe();

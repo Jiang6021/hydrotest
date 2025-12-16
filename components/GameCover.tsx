@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState } from 'react';
-import { Swords, Droplets, Flame, Play } from 'lucide-react';
+import { Swords, Droplets, Flame, Play, CheckSquare, Heart, Shield, Zap, Sparkles } from 'lucide-react';
 
 interface GameCoverProps {
   onStart: () => void;
@@ -48,53 +49,105 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
     return () => clearInterval(timer);
   }, []);
 
+  const FEATURES = [
+      {
+          icon: <CheckSquare size={20} className="text-emerald-400" />,
+          title: "任務成長",
+          desc: "完成現實待辦事項\n對惡魔造成真實傷害"
+      },
+      {
+          icon: <Droplets size={20} className="text-cyan-400" />,
+          title: "喝水充能",
+          desc: "攝取水分補充彈藥\n保持體力發動攻擊"
+      },
+      {
+          icon: <Sparkles size={20} className="text-purple-400" />,
+          title: "感恩祝福",
+          desc: "寫下感恩日記\n隨機獲得戰鬥 Buff"
+      },
+      {
+          icon: <Shield size={20} className="text-orange-400" />,
+          title: "團隊討伐",
+          desc: "與好友組成隊伍\n共同擊敗巨型 Boss"
+      }
+  ];
+
   return (
-    <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden font-inter text-white p-6">
+    <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center relative overflow-hidden font-inter text-white px-6 py-8">
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
         <div className="absolute top-10 left-10 text-cyan-500 animate-pulse"><Droplets size={100} /></div>
         <div className="absolute bottom-10 right-10 text-orange-600 animate-pulse delay-700"><Flame size={120} /></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-900/20 blur-[100px] rounded-full"></div>
       </div>
 
-      <div className="z-10 text-center space-y-12 max-w-md w-full">
+      <div className="z-10 w-full max-w-md flex flex-col h-full">
         
-        {/* Date Display (Taiwan) */}
-        <div className="border-b border-slate-700 pb-4">
-          <p className="text-slate-400 text-xs tracking-[0.2em] uppercase mb-2">Current Date (Taiwan)</p>
-          <h2 className="text-xl md:text-2xl font-bold text-cyan-100 font-pixel">
-            {taiwanDate}
-          </h2>
-          <p className="text-4xl font-black text-slate-700 mt-2 font-pixel opacity-30">{timeString}</p>
+        {/* Header: Date & Time */}
+        <div className="border-b border-slate-800 pb-4 mb-6">
+          <div className="flex justify-between items-end">
+              <div>
+                <p className="text-slate-400 text-[10px] tracking-[0.2em] uppercase mb-1">Taiwan System Time</p>
+                <h2 className="text-sm font-bold text-cyan-100">
+                    {taiwanDate}
+                </h2>
+              </div>
+              <p className="text-3xl font-black text-slate-700 font-pixel opacity-50">{timeString}</p>
+          </div>
         </div>
 
-        {/* Title Logo */}
-        <div className="space-y-4">
-          <div className="flex justify-center items-center gap-4 mb-4">
-            <Swords size={48} className="text-cyan-400" />
+        {/* Title Logo Section */}
+        <div className="text-center mb-8 relative">
+          <div className="inline-flex justify-center items-center gap-2 mb-2 bg-slate-900/50 p-2 px-4 rounded-full border border-slate-700/50 backdrop-blur-sm">
+            <Swords size={16} className="text-cyan-400" />
+            <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">Gamified Habit RPG</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">
+          <h1 className="text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
             HYDRO<br/>SLAYER
           </h1>
-          <p className="text-slate-400 text-sm md:text-base tracking-widest uppercase">
-            Defeat the Fire Demon
+          <p className="text-slate-400 text-xs tracking-widest uppercase">
+            v1.1.0 • Defeat the Fire Demon
           </p>
         </div>
 
-        {/* Start Button */}
-        <button 
-          onClick={onStart}
-          className="group relative w-full bg-cyan-700 hover:bg-cyan-600 text-white font-bold py-6 px-8 rounded-xl transition-all hover:-translate-y-1 shadow-[0_10px_0_rgb(21,94,117)] active:shadow-none active:translate-y-2"
-        >
-          <div className="flex items-center justify-center gap-4">
-            <span className="font-pixel text-xl">START RAID</span>
-            <Play className="fill-white group-hover:scale-110 transition-transform" />
-          </div>
-        </button>
-
-        <div className="text-xs text-slate-600 mt-8">
-          v1.0.2 • LINE Browser Fix
+        {/* --- NEW: Feature Grid --- */}
+        <div className="grid grid-cols-2 gap-3 mb-8 flex-1 content-center">
+            {FEATURES.map((feat, idx) => (
+                <div 
+                    key={idx} 
+                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group"
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-slate-600 transition-colors">
+                            {feat.icon}
+                        </div>
+                        <h3 className="font-bold text-sm text-slate-200">{feat.title}</h3>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line">
+                        {feat.desc}
+                    </p>
+                </div>
+            ))}
         </div>
+
+        {/* Start Button Area */}
+        <div className="mt-auto space-y-4">
+            <button 
+            onClick={onStart}
+            className="group relative w-full bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-5 px-8 rounded-xl transition-all hover:-translate-y-1 shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-[0.98] border border-cyan-500/30"
+            >
+            <div className="flex items-center justify-center gap-3">
+                <span className="font-pixel text-lg tracking-wide">START ADVENTURE</span>
+                <Play className="fill-white group-hover:translate-x-1 transition-transform" size={20} />
+            </div>
+            </button>
+            
+            <p className="text-center text-[10px] text-slate-600">
+                Data persists locally & syncs with party via Firebase
+            </p>
+        </div>
+
       </div>
     </div>
   );

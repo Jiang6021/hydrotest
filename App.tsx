@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useGameViewModel } from './hooks/useGameViewModel';
 import { GameCover } from './components/GameCover';
@@ -38,6 +39,7 @@ export default function App() {
     otherPlayers, 
     boss, 
     logs, 
+    randomTasks, // Get dynamic tasks
     isProcessing, 
     lastActionFeedback,
     isLoggedIn,
@@ -146,6 +148,7 @@ export default function App() {
                 onCompleteQuest={completeTodo} 
                 onAddTodo={addTodo} 
                 isProcessing={isProcessing} 
+                randomTasks={randomTasks} // Passed prop
             />
          )}
          {activeTab === 'STATUS' && <StatusView player={currentPlayer} onOpenGratitude={() => setShowGratitudeModal(true)} isProcessing={isProcessing} totalDamageContrib={totalRaidDamage} />}
