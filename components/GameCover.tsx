@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { Swords, Droplets, Flame, Play, CheckSquare, Heart, Shield, Zap, Sparkles } from 'lucide-react';
+import { Swords, Droplets, Flame, Play, CheckSquare, Shield, Sparkles } from 'lucide-react';
 
 interface GameCoverProps {
   onStart: () => void;
@@ -87,18 +86,19 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
       <div className="z-10 w-full max-w-md flex flex-col h-full justify-between">
         
         {/* Top Section */}
-        <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex flex-col gap-1 shrink-0">
             {/* Header: Date & Time */}
-            <div className="border-b border-slate-800 pb-3 mb-2">
-            <div className="flex justify-between items-end gap-2">
-                <div className="min-w-0">
+            <div className="border-b border-slate-800 pb-2 mb-2">
+            <div className="flex justify-between items-end gap-3">
+                <div className="min-w-0 flex-1">
                     <p className="text-slate-400 text-[10px] tracking-[0.2em] uppercase mb-1">Taiwan System Time</p>
-                    <h2 className="text-sm font-bold text-cyan-100 whitespace-nowrap">
+                    {/* Added whitespace-nowrap to prevent date wrapping */}
+                    <h2 className="text-sm font-bold text-cyan-100 whitespace-nowrap overflow-hidden text-ellipsis">
                         {taiwanDate}
                     </h2>
                 </div>
-                {/* Reduced font size to 3xl to prevent pushing the date on small screens */}
-                <p className="text-3xl font-black text-slate-700 font-pixel opacity-50 text-right leading-none">{timeString}</p>
+                {/* Reduced font size slightly to ensure date fits */}
+                <p className="text-3xl font-black text-slate-700 font-pixel opacity-50 text-right leading-none shrink-0">{timeString}</p>
             </div>
             </div>
 
@@ -108,7 +108,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
                 <Swords size={16} className="text-cyan-400" />
                 <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">Gamified Habit RPG</span>
             </div>
-            {/* Responsive text size: 4xl on mobile, 5xl on desktop */}
+            {/* Responsive text size */}
             <h1 className="text-4xl sm:text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
                 HYDRO<br/>SLAYER
             </h1>
@@ -119,19 +119,22 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
         </div>
 
         {/* --- Feature Grid --- */}
-        <div className="grid grid-cols-2 gap-3 mb-2 flex-1 content-center min-h-0">
+        {/* Removed min-h-0 constraint and allow grid to take space appropriately */}
+        <div className="grid grid-cols-2 gap-3 mb-2 flex-1 content-center">
             {FEATURES.map((feat, idx) => (
                 <div 
                     key={idx} 
-                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group flex flex-col justify-center h-full max-h-[90px] sm:max-h-[100px]"
+                    // Changed max-h to min-h and h-auto to allow text expansion
+                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group flex flex-col justify-center h-auto min-h-[90px]"
                 >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1.5">
                         <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-slate-600 transition-colors shrink-0">
                             {feat.icon}
                         </div>
                         <h3 className="font-bold text-sm text-slate-200 leading-tight">{feat.title}</h3>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line line-clamp-2">
+                    {/* Removed line-clamp to show full text */}
+                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line">
                         {feat.desc}
                     </p>
                 </div>
