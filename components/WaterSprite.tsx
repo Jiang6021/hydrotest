@@ -11,7 +11,6 @@ interface WaterSpriteProps {
 // 範例：'data:audio/mpeg;base64,SUQzBAAAAAAA...' 或 'data:audio/wav;base64,UklGR...'
 // 您需要將實際的 Base64 音訊數據替換掉 'YOUR_BASE64_AUDIO_STRING_HERE'
 
-
 export const WaterSprite: React.FC<WaterSpriteProps> = ({ isDrinking, isHappy, isTeamGoalMet }) => {
   const [clickJump, setClickJump] = useState(false);
   
