@@ -73,7 +73,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center relative overflow-hidden font-inter text-white px-6 py-8">
+    <div className="h-[100dvh] w-full bg-slate-950 flex flex-col items-center relative overflow-hidden font-inter text-white px-6 py-6 touch-none select-none">
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
@@ -82,60 +82,63 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-900/20 blur-[100px] rounded-full"></div>
       </div>
 
-      <div className="z-10 w-full max-w-md flex flex-col h-full">
+      <div className="z-10 w-full max-w-md flex flex-col h-full justify-between">
         
-        {/* Header: Date & Time */}
-        <div className="border-b border-slate-800 pb-4 mb-6">
-          <div className="flex justify-between items-end">
-              <div>
-                <p className="text-slate-400 text-[10px] tracking-[0.2em] uppercase mb-1">Taiwan System Time</p>
-                <h2 className="text-sm font-bold text-cyan-100">
-                    {taiwanDate}
-                </h2>
-              </div>
-              <p className="text-3xl font-black text-slate-700 font-pixel opacity-50">{timeString}</p>
-          </div>
+        {/* Top Section */}
+        <div className="flex flex-col gap-2 shrink-0">
+            {/* Header: Date & Time */}
+            <div className="border-b border-slate-800 pb-3 mb-2">
+            <div className="flex justify-between items-end">
+                <div>
+                    <p className="text-slate-400 text-[10px] tracking-[0.2em] uppercase mb-1">Taiwan System Time</p>
+                    <h2 className="text-sm font-bold text-cyan-100">
+                        {taiwanDate}
+                    </h2>
+                </div>
+                <p className="text-3xl font-black text-slate-700 font-pixel opacity-50">{timeString}</p>
+            </div>
+            </div>
+
+            {/* Title Logo Section */}
+            <div className="text-center mb-4 relative">
+            <div className="inline-flex justify-center items-center gap-2 mb-2 bg-slate-900/50 p-2 px-4 rounded-full border border-slate-700/50 backdrop-blur-sm">
+                <Swords size={16} className="text-cyan-400" />
+                <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">Gamified Habit RPG</span>
+            </div>
+            <h1 className="text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
+                HYDRO<br/>SLAYER
+            </h1>
+            <p className="text-slate-400 text-xs tracking-widest uppercase">
+                v1.1.0 • Defeat the Fire Demon
+            </p>
+            </div>
         </div>
 
-        {/* Title Logo Section */}
-        <div className="text-center mb-8 relative">
-          <div className="inline-flex justify-center items-center gap-2 mb-2 bg-slate-900/50 p-2 px-4 rounded-full border border-slate-700/50 backdrop-blur-sm">
-            <Swords size={16} className="text-cyan-400" />
-            <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">Gamified Habit RPG</span>
-          </div>
-          <h1 className="text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
-            HYDRO<br/>SLAYER
-          </h1>
-          <p className="text-slate-400 text-xs tracking-widest uppercase">
-            v1.1.0 • Defeat the Fire Demon
-          </p>
-        </div>
-
-        {/* --- NEW: Feature Grid --- */}
-        <div className="grid grid-cols-2 gap-3 mb-8 flex-1 content-center">
+        {/* --- Feature Grid --- */}
+        <div className="grid grid-cols-2 gap-3 mb-4 flex-1 content-center min-h-0">
             {FEATURES.map((feat, idx) => (
                 <div 
                     key={idx} 
-                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group"
+                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group flex flex-col justify-center h-full max-h-[100px]"
                 >
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-slate-600 transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-slate-600 transition-colors shrink-0">
                             {feat.icon}
                         </div>
-                        <h3 className="font-bold text-sm text-slate-200">{feat.title}</h3>
+                        <h3 className="font-bold text-sm text-slate-200 leading-tight">{feat.title}</h3>
                     </div>
-                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line">
+                    <p className="text-[10px] text-slate-400 leading-relaxed whitespace-pre-line line-clamp-2">
                         {feat.desc}
                     </p>
                 </div>
             ))}
         </div>
 
-        {/* Start Button Area */}
-        <div className="mt-auto space-y-4">
+        {/* Start Button Area (Footer) */}
+        <div className="mt-auto space-y-3 shrink-0 pb-4">
             <button 
-            onClick={onStart}
-            className="group relative w-full bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-5 px-8 rounded-xl transition-all hover:-translate-y-1 shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-[0.98] border border-cyan-500/30"
+                onClick={onStart}
+                className="group relative w-full bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-4 px-8 rounded-xl transition-all hover:-translate-y-1 shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-[0.98] border border-cyan-500/30"
             >
             <div className="flex items-center justify-center gap-3">
                 <span className="font-pixel text-lg tracking-wide">START ADVENTURE</span>
