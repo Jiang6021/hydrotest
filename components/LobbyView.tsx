@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
-import { Player } from '../types';
+import { Player, TodoItem } from '../types';
 import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw, Sparkles, X } from 'lucide-react';
 import { CreateTaskView } from './CreateTaskView';
 
@@ -88,8 +87,8 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
   // Convert todos map to array
   const todoList = useMemo(() => {
       if (!player.todos) return [];
-      // Sort by creation time (newest first)
-      return Object.values(player.todos).sort((a, b) => b.createdAt - a.createdAt);
+      // Fix: Explicitly type 'a' and 'b' to resolve 'unknown' error
+      return Object.values(player.todos).sort((a: TodoItem, b: TodoItem) => b.createdAt - a.createdAt);
   }, [player.todos]);
 
   // If in creation mode, render the Create View instead

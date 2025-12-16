@@ -15,13 +15,13 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
       const now = new Date();
       
       try {
-          // Format Date: e.g., "2023年10月27日 星期五"
+          // Format Date: e.g., "2023年10月27日" (移除星期)
           const dateFormatter = new Intl.DateTimeFormat('zh-TW', {
             timeZone: 'Asia/Taipei',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-            weekday: 'long'
+            // weekday: 'long' // 移除此行，不再顯示星期
           });
 
           // Format Time: e.g., "14:30" (Seconds removed)
