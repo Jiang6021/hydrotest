@@ -107,7 +107,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
         {/* Welcome Header */}
         <div className="pt-4 px-2 mb-8">
             <h2 className="text-2xl font-bold text-white mb-1">Good day, {player.name}</h2>
-            <p className="text-slate-400 text-xs">One step closer, Merry Chrismas</p>
+            <p className="text-slate-400 text-xs">One step closer, Merry Chrismas🎄</p>
         </div>
 
         {/* Task List Section */}
@@ -123,7 +123,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
                 <div className="flex flex-col items-center gap-4 mt-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     
                     <div className="text-center">
-                         <p className="text-slate-400 text-sm font-medium">暫無任務，嘗試新增一些吧！</p>
+                         <p className="text-slate-200 text-sm font-medium">暫無任務，嘗試新增一些吧！</p>
                     </div>
 
                     {/* Subtle Random Task Button (Pill Shape, Purple Accent) */}
