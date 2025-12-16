@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Player } from '../types';
-import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw } from 'lucide-react';
+import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw, Sparkles, X } from 'lucide-react';
 import { CreateTaskView } from './CreateTaskView';
 
 interface LobbyViewProps {
@@ -16,6 +16,9 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
   // State to toggle full screen Create View
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   
+  // State for Random Task Modal
+  const [showRandomModal, setShowRandomModal] = useState(false);
+
   // Track tasks we have already shown to the user in this session to prevent repeats
   const [seenTasks, setSeenTasks] = useState<Set<string>>(new Set());
   const [isExhausted, setIsExhausted] = useState(false);
@@ -71,6 +74,7 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
             importance: 1,
             difficulty: 1
         });
+        setShowRandomModal(false); // Close modal on accept
     }
   };
 
@@ -102,84 +106,37 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
     <div className="space-y-6 animate-in slide-in-from-left-4 duration-300 fade-in pb-24 relative min-h-[80vh]">
         
         {/* Welcome Header */}
-        <div className="pt-4 px-2">
+        <div className="pt-4 px-2 mb-8">
             <h2 className="text-2xl font-bold text-white mb-1">Good day, {player.name}</h2>
             <p className="text-slate-400 text-xs">One step closer, Merry Chrismas</p>
         </div>
 
-        {/* Daily Momentum Card */}
-        {todoList.length > 0 && (
-            <div className="bg-gradient-to-r from-indigo-900 to-slate-900 rounded-2xl p-5 border border-indigo-500/30 relative overflow-hidden shadow-lg mx-1">
-                <div className="absolute right-0 top-0 p-4 opacity-10">
-                    <Sun size={80} className="text-yellow-400" />
-                </div>
-                <div className="relative z-10 flex items-center justify-between">
-                    <div>
-                        <div className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-1">進行中任務</div>
-                        <div className="text-2xl font-pixel text-white">{todoList.length} 待完成</div>
-                    </div>
-                    <Battery className="text-indigo-400" />
-                </div>
-            </div>
-        )}
-
-        {/* Task List or Random Suggestion */}
+        {/* Task List Section */}
         <div className="space-y-3 px-1">
-            
+            <div className="px-2">
+                <h3 className="text-slate-400 text-xs font-bold uppercase">所有任務</h3>
+                {/* Horizontal Line */}
+                <div className="h-px bg-slate-800 w-full mt-2"></div>
+            </div>
             
             {todoList.length === 0 ? (
-                // --- RANDOM SUGGESTION CARD (Empty State) ---
-                <div className="flex flex-col gap-8">
-                    <div className="bg-slate-800/50 border border-dashed border-slate-600 rounded-2xl p-6 text-center animate-in zoom-in duration-300 flex flex-col items-center gap-4">
-                        <div className="bg-slate-700/50 p-4 rounded-full mb-2">
-                            <Sun className="text-yellow-200" size={32} />
-                        </div>
-                        <div>
-                            <h3 className="text-white font-bold text-lg mb-1">找點有趣的事情做...</h3>
-                            <p className="text-slate-400 text-sm">試試看這個如何：</p>
-                        </div>
-                        
-                        <div className={`relative w-full p-6 rounded-xl border transition-colors shadow-[0_0_15px_rgba(99,102,241,0.1)] mt-2
-                            ${isExhausted ? 'bg-slate-800 border-red-900/50' : 'bg-slate-900 border-indigo-500/30'}
-                        `}>
-                            {/* Shuffle Button (Top Right) */}
-                            <button 
-                                onClick={handleShuffle}
-                                disabled={isExhausted}
-                                className={`absolute top-2 right-2 p-2 rounded-full transition-all hover:scale-110 active:scale-95
-                                    ${isExhausted 
-                                        ? 'text-slate-600 cursor-not-allowed' 
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                                    }
-                                `}
-                                title="換一個任務"
-                            >
-                                <RotateCcw size={16} />
-                            </button>
-
-                            <p className={`text-xl font-bold px-2 py-4 ${isExhausted ? 'text-slate-500' : 'text-indigo-300'}`}>
-                                {randomTaskSuggestion}
-                            </p>
-                        </div>
-
-                        <button 
-                            onClick={handleAcceptRandom}
-                            disabled={isProcessing || isExhausted}
-                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase shadow-lg transition-colors mt-2
-                                ${isExhausted
-                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
-                                    : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20 active:scale-[0.98]'
-                                }
-                            `}
-                        >
-                            <ThumbsUp size={18} /> 接受挑戰
-                        </button>
-                    </div>
+                // --- EMPTY STATE (Subtle & Clean) ---
+                <div className="flex flex-col items-center gap-4 mt-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     
-                    {/* Empty State Text */}
-                    <div className="text-center space-y-2 opacity-80 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-300">
-                        <p className="text-slate-400 text-sm font-medium">暫無任務，嘗試新增一些吧！</p>
+                    <div className="text-center">
+                         <p className="text-slate-400 text-sm font-medium">暫無任務，嘗試新增一些吧！</p>
                     </div>
+
+                    {/* Subtle Random Task Button (Pill Shape, Purple Accent) */}
+                    <button 
+                        onClick={() => setShowRandomModal(true)}
+                        className="group flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-900 border border-slate-800 hover:border-purple-500/30 hover:bg-slate-800 transition-all active:scale-95 shadow-sm hover:shadow-[0_0_15px_rgba(168,85,247,0.1)]"
+                    >
+                         <Sparkles size={14} className="text-purple-400 group-hover:text-purple-300 transition-colors" />
+                         <span className="text-xs text-slate-500 group-hover:text-slate-300 font-bold transition-colors">
+                            不知道做什麼嗎？
+                         </span>
+                    </button>
                 </div>
             ) : (
                 // --- CUSTOM TODO LIST ---
@@ -222,11 +179,81 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
             className="group fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-tr from-cyan-600 to-blue-500 rounded-full shadow-[0_4px_14px_rgba(0,255,255,0.4)] flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all z-50 border-2 border-cyan-300"
         >
             <Plus size={32} />
-            {/* Tooltip on Hover/Touch */}
             <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-600 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
                 建立待辦事項
             </span>
         </button>
+
+        {/* --- RANDOM TASK MODAL --- */}
+        {showRandomModal && (
+            <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-300">
+                    
+                    {/* Close Button */}
+                    <button 
+                        onClick={() => setShowRandomModal(false)}
+                        className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-1"
+                    >
+                        <X size={20} />
+                    </button>
+
+                    <div className="text-center mb-6">
+                        <div className="inline-block p-3 rounded-full bg-slate-800 mb-3 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                            <Sparkles className="text-indigo-400" size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-white">命運的安排</h3>
+                        <p className="text-slate-400 text-xs mt-1">或許這正是你現在需要的挑戰</p>
+                    </div>
+
+                    {/* Card Content */}
+                    <div className={`relative w-full p-6 rounded-xl border transition-colors shadow-inner mb-6 flex flex-col items-center justify-center min-h-[140px]
+                        ${isExhausted ? 'bg-slate-950 border-red-900/30' : 'bg-slate-950 border-indigo-500/30'}
+                    `}>
+                        {/* Shuffle Button (Top Right Inside Card) */}
+                        <button 
+                            onClick={handleShuffle}
+                            disabled={isExhausted}
+                            className={`absolute top-2 right-2 p-2 rounded-full transition-all active:scale-95 active:rotate-180 duration-500
+                                ${isExhausted 
+                                    ? 'text-slate-700 cursor-not-allowed' 
+                                    : 'text-slate-500 hover:text-white hover:bg-slate-800'
+                                }
+                            `}
+                            title="換一個"
+                        >
+                            <RotateCcw size={16} />
+                        </button>
+
+                        <p className={`text-xl font-bold text-center px-4 ${isExhausted ? 'text-slate-600' : 'text-indigo-300'}`}>
+                            {randomTaskSuggestion}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button 
+                            onClick={handleAcceptRandom}
+                            disabled={isProcessing || isExhausted}
+                            className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold uppercase shadow-lg transition-colors
+                                ${isExhausted
+                                    ? 'bg-slate-800 text-slate-600 cursor-not-allowed shadow-none'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-900/20 active:scale-[0.98]'
+                                }
+                            `}
+                        >
+                            <ThumbsUp size={18} /> 
+                            接受挑戰
+                        </button>
+                        <button 
+                            onClick={() => setShowRandomModal(false)}
+                            className="w-full py-3 text-slate-500 text-xs font-bold hover:text-slate-300 transition-colors"
+                        >
+                            我再想想
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
     </div>
   );
 };
