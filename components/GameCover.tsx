@@ -25,7 +25,7 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
             weekday: 'long'
           });
 
-          // Format Time: e.g., "14:30"
+          // Format Time: e.g., "14:30" (Seconds removed)
           const timeFormatter = new Intl.DateTimeFormat('zh-TW', {
             timeZone: 'Asia/Taipei',
             hour: '2-digit',
@@ -38,13 +38,15 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
       } catch (e) {
           // Fallback for browsers that don't support timeZone option perfectly
           setTaiwanDate(now.toLocaleDateString());
-          setTimeString(now.toLocaleTimeString());
+          const hours = now.getHours().toString().padStart(2, '0');
+          const minutes = now.getMinutes().toString().padStart(2, '0');
+          setTimeString(`${hours}:${minutes}`);
       }
     };
 
     updateTime();
-    // Update minute by minute to keep time fresh without over-rendering
-    const timer = setInterval(updateTime, 1000 * 60);
+    // Keep checking every second to ensure the minute flips exactly when it happens
+    const timer = setInterval(updateTime, 1000);
 
     return () => clearInterval(timer);
   }, []);
@@ -95,7 +97,8 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
                         {taiwanDate}
                     </h2>
                 </div>
-                <p className="text-3xl font-black text-slate-700 font-pixel opacity-50">{timeString}</p>
+                {/* Removed extra width since seconds are gone */}
+                <p className="text-4xl font-black text-slate-700 font-pixel opacity-50 text-right">{timeString}</p>
             </div>
             </div>
 
