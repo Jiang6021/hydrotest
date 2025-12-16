@@ -90,39 +90,40 @@ export const GameCover: React.FC<GameCoverProps> = ({ onStart }) => {
         <div className="flex flex-col gap-2 shrink-0">
             {/* Header: Date & Time */}
             <div className="border-b border-slate-800 pb-3 mb-2">
-            <div className="flex justify-between items-end">
-                <div>
+            <div className="flex justify-between items-end gap-2">
+                <div className="min-w-0">
                     <p className="text-slate-400 text-[10px] tracking-[0.2em] uppercase mb-1">Taiwan System Time</p>
-                    <h2 className="text-sm font-bold text-cyan-100">
+                    <h2 className="text-sm font-bold text-cyan-100 whitespace-nowrap">
                         {taiwanDate}
                     </h2>
                 </div>
-                {/* Removed extra width since seconds are gone */}
-                <p className="text-4xl font-black text-slate-700 font-pixel opacity-50 text-right">{timeString}</p>
+                {/* Reduced font size to 3xl to prevent pushing the date on small screens */}
+                <p className="text-3xl font-black text-slate-700 font-pixel opacity-50 text-right leading-none">{timeString}</p>
             </div>
             </div>
 
             {/* Title Logo Section */}
-            <div className="text-center mb-4 relative">
+            <div className="text-center mb-2 relative">
             <div className="inline-flex justify-center items-center gap-2 mb-2 bg-slate-900/50 p-2 px-4 rounded-full border border-slate-700/50 backdrop-blur-sm">
                 <Swords size={16} className="text-cyan-400" />
                 <span className="text-[10px] font-bold text-cyan-400 tracking-widest uppercase">Gamified Habit RPG</span>
             </div>
-            <h1 className="text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
+            {/* Responsive text size: 4xl on mobile, 5xl on desktop */}
+            <h1 className="text-4xl sm:text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-blue-600 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] leading-tight mb-2">
                 HYDRO<br/>SLAYER
             </h1>
-            <p className="text-slate-400 text-xs tracking-widest uppercase">
+            <p className="text-slate-400 text-[10px] sm:text-xs tracking-widest uppercase pb-1">
                 v1.1.0 • Defeat the Fire Demon
             </p>
             </div>
         </div>
 
         {/* --- Feature Grid --- */}
-        <div className="grid grid-cols-2 gap-3 mb-4 flex-1 content-center min-h-0">
+        <div className="grid grid-cols-2 gap-3 mb-2 flex-1 content-center min-h-0">
             {FEATURES.map((feat, idx) => (
                 <div 
                     key={idx} 
-                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group flex flex-col justify-center h-full max-h-[100px]"
+                    className="bg-slate-900/60 border border-slate-800 p-3 rounded-xl backdrop-blur-sm hover:bg-slate-800/60 transition-colors group flex flex-col justify-center h-full max-h-[90px] sm:max-h-[100px]"
                 >
                     <div className="flex items-center gap-2 mb-1">
                         <div className="p-1.5 bg-slate-950 rounded-lg border border-slate-800 group-hover:border-slate-600 transition-colors shrink-0">
