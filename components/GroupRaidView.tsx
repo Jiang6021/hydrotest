@@ -45,9 +45,14 @@ const TUTORIAL_STEPS = [
         highlight: 'water' 
     },
     { 
-        text: "下方的【動態牆】會顯示夥伴們的喝水、攻擊與任務完成紀錄。一起互相激勵吧！", 
+        text: "最下方的【動態牆】會顯示夥伴們的喝水、攻擊與任務完成紀錄，一起互相激勵吧！", 
         position: 'top', 
         highlight: 'tabs' 
+    },
+    { 
+        text: "最後也是最重要的一步！點擊【接受任務】加入討伐！", 
+        position: 'join-guide', 
+        highlight: 'join_button' 
     },
 ];
 
@@ -80,7 +85,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
 
   // Check Tutorial Seen
   useEffect(() => {
-      const hasSeen = localStorage.getItem('has_seen_raid_tutorial_v6'); // Version bumped for new layout
+      const hasSeen = localStorage.getItem('has_seen_raid_tutorial_v7'); // Version bumped for new step
       if (!hasSeen) {
           setShowTutorial(true);
       }
@@ -91,7 +96,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
       if (tutorialStep < TUTORIAL_STEPS.length - 1) {
           setTutorialStep(prev => prev + 1);
       } else {
-          localStorage.setItem('has_seen_raid_tutorial_v6', 'true');
+          localStorage.setItem('has_seen_raid_tutorial_v7', 'true');
           setShowTutorial(false);
           setTutorialStep(0);
       }
@@ -130,7 +135,8 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
       const currentHighlight = TUTORIAL_STEPS[tutorialStep].highlight;
       if (currentHighlight === key) {
           // Add a glow ring and elevate z-index above the backdrop
-          return 'relative z-50 ring-4 ring-cyan-400 ring-offset-4 ring-offset-slate-900 shadow-[0_0_50px_rgba(34,211,238,0.5)] transition-all duration-300';
+          // Force z-index to 50 to ensure it is above the dimming layer (z-40)
+          return 'relative !z-50 ring-4 ring-cyan-400 ring-offset-4 ring-offset-slate-900 shadow-[0_0_50px_rgba(34,211,238,0.5)] transition-all duration-300';
       }
       return '';
   };
@@ -139,9 +145,15 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   const getBubblePositionClass = () => {
       const pos = TUTORIAL_STEPS[tutorialStep].position;
       if (pos === 'top') return 'top-24';
-      if (pos === 'boss-guide') return 'top-80'; // Customized for Boss Step (approx 320px from top)
+      if (pos === 'boss-guide') return 'top-80'; // Customized for Boss Step
+      if (pos === 'join-guide') return 'top-48'; // Customized for Join Step (above center)
       return 'bottom-28';
   };
+
+  const isCurrentStepTopAligned = 
+      TUTORIAL_STEPS[tutorialStep].position === 'top' || 
+      TUTORIAL_STEPS[tutorialStep].position === 'boss-guide';
+      // Removed 'join-guide' so arrow defaults to bottom
 
   return (
     <div className="pb-24 pt-2 relative min-h-[80vh]">
@@ -164,8 +176,8 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
                         alt="Guide"
                     />
                     <div className="bg-slate-900 border-2 border-cyan-500 rounded-2xl p-4 shadow-2xl flex-1 relative pointer-events-auto">
-                        {/* Arrow Logic: Top or Boss-Guide uses top-left arrow */}
-                        {(TUTORIAL_STEPS[tutorialStep].position === 'top' || TUTORIAL_STEPS[tutorialStep].position === 'boss-guide') ? (
+                        {/* Arrow Logic: Top, Boss-Guide, or Join-Guide uses top-left arrow */}
+                        {isCurrentStepTopAligned ? (
                             <div className="absolute top-4 -left-2 w-4 h-4 bg-slate-900 border-l-2 border-b-2 border-cyan-500 rotate-45"></div>
                         ) : (
                             <div className="absolute bottom-4 -left-2 w-4 h-4 bg-slate-900 border-l-2 border-b-2 border-cyan-500 rotate-45"></div>
@@ -177,7 +189,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
                              <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    localStorage.setItem('has_seen_raid_tutorial_v6', 'true');
+                                    localStorage.setItem('has_seen_raid_tutorial_v7', 'true');
                                     setShowTutorial(false);
                                 }}
                                 className="text-slate-500 text-xs px-2 py-1 underline hover:text-slate-300"
@@ -216,8 +228,9 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
         </div>
 
         {/* --- NON-PARTICIPANT OVERLAY --- */}
-        {!isParticipating && !boss?.isDefeated && !showTutorial && (
-            <div className="relative z-30 bg-slate-950/90 border border-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in mb-4 min-h-[300px]">
+        {/* Logic update: Show if NOT participating AND (Not in tutorial OR It is the join step of tutorial) */}
+        {!isParticipating && !boss?.isDefeated && (!showTutorial || TUTORIAL_STEPS[tutorialStep].highlight === 'join_button') && (
+            <div className={`relative z-30 bg-slate-950/90 border border-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in mb-4 min-h-[300px] ${getSpotlightClass('join_button')}`}>
                 <div className="mb-4 text-orange-500 animate-pulse">
                     <AlertCircle size={48} />
                 </div>
