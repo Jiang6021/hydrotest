@@ -26,12 +26,12 @@ interface GroupRaidViewProps {
 const TUTORIAL_STEPS = [
     { 
         text: "歡迎來到團隊討伐！我是你的戰鬥導航員。這裡是你與夥伴共同對抗惡魔的地方！", 
-        position: 'bottom', 
-        highlight: 'intro' 
+        position: 'boss-guide', // 改為自定義位置，顯示在 BOSS 下方
+        highlight: '' 
     },
     { 
         text: "上方是目前的 BOSS！血量是大家共享的。當你完成任務或攻擊時，BOSS 會受到傷害。", 
-        position: 'bottom', 
+        position: 'boss-guide', // 保持在 BOSS 下方，引導視線向上
         highlight: 'boss' 
     },
     { 
@@ -135,6 +135,14 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
       return '';
   };
 
+  // Helper to determine bubble class based on position config
+  const getBubblePositionClass = () => {
+      const pos = TUTORIAL_STEPS[tutorialStep].position;
+      if (pos === 'top') return 'top-24';
+      if (pos === 'boss-guide') return 'top-80'; // Customized for Boss Step (approx 320px from top)
+      return 'bottom-28';
+  };
+
   return (
     <div className="pb-24 pt-2 relative min-h-[80vh]">
         
@@ -148,7 +156,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
 
         {/* --- TUTORIAL GUIDE BUBBLE --- */}
         {showTutorial && (
-            <div className={`fixed left-0 right-0 z-[60] px-4 flex justify-center pointer-events-none transition-all duration-500 ${TUTORIAL_STEPS[tutorialStep].position === 'top' ? 'top-24' : 'bottom-28'}`}>
+            <div className={`fixed left-0 right-0 z-[60] px-4 flex justify-center pointer-events-none transition-all duration-500 ${getBubblePositionClass()}`}>
                 <div className="flex items-end gap-3 max-w-sm w-full animate-in zoom-in-95 duration-300">
                     <img 
                         src={CC_IMAGE} 
@@ -156,7 +164,8 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
                         alt="Guide"
                     />
                     <div className="bg-slate-900 border-2 border-cyan-500 rounded-2xl p-4 shadow-2xl flex-1 relative pointer-events-auto">
-                        {TUTORIAL_STEPS[tutorialStep].position === 'top' ? (
+                        {/* Arrow Logic: Top or Boss-Guide uses top-left arrow */}
+                        {(TUTORIAL_STEPS[tutorialStep].position === 'top' || TUTORIAL_STEPS[tutorialStep].position === 'boss-guide') ? (
                             <div className="absolute top-4 -left-2 w-4 h-4 bg-slate-900 border-l-2 border-b-2 border-cyan-500 rotate-45"></div>
                         ) : (
                             <div className="absolute bottom-4 -left-2 w-4 h-4 bg-slate-900 border-l-2 border-b-2 border-cyan-500 rotate-45"></div>

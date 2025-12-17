@@ -14,6 +14,9 @@ interface ErrorBoundaryState {
 
 // 將 extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> 改為 extends Component<ErrorBoundaryProps, ErrorBoundaryState>
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicitly declare props to ensure TypeScript recognizes it,
+  // although it should be inherited from React.Component.
+  readonly props: Readonly<ErrorBoundaryProps>;
   public state: ErrorBoundaryState = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {

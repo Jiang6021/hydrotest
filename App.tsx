@@ -17,7 +17,9 @@ import {
   Package, 
   Settings, 
   Sparkles,
-  Trophy
+  Trophy,
+  BarChart, // 新增：用於狀態頁面
+  UserCircle // 新增：用於個人資料頁面
 } from 'lucide-react';
 
 type Tab = 'LOBBY' | 'STATUS' | 'GROUP' | 'STORAGE' | 'PROFILE';
@@ -134,10 +136,10 @@ export default function App() {
   // --- TAB DEFINITIONS ---
   const TABS: {id: Tab, icon: any, label: string}[] = [
       { id: 'LOBBY', icon: Home, label: 'Lobby' },
-      { id: 'STATUS', icon: User, label: 'Status' },
+      { id: 'STATUS', icon: BarChart, label: 'Status' }, // 從 User 更改為 BarChart
       { id: 'GROUP', icon: Users, label: 'Group' },
       { id: 'STORAGE', icon: Package, label: 'Storage' },
-      { id: 'PROFILE', icon: Settings, label: 'Profile' },
+      { id: 'PROFILE', icon: UserCircle, label: 'Profile' }, // 從 Settings 更改為 UserCircle
   ];
 
   return (
