@@ -27,7 +27,7 @@ const TUTORIAL_STEPS = [
     { 
         text: "歡迎來到團隊討伐！我是你的戰鬥導航員。這裡是你與夥伴共同對抗惡魔的地方！", 
         position: 'boss-guide', // 改為自定義位置，顯示在 BOSS 下方
-        highlight: '' 
+        highlight: '' // 移除突出顯示
     },
     { 
         text: "上方是目前的 BOSS！血量是大家共享的。當你完成任務或攻擊時，BOSS 會受到傷害。", 
