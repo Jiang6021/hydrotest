@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RoomData, Player, GameLog } from '../types';
 import { gameService } from '../services/gameService';
-import { BuffType } from '../constants';
+import { BuffType, DimensionType } from '../constants';
 
 const STORAGE_KEY_USER = 'hydro_slayer_id';
 const STORAGE_KEY_ROOM = 'hydro_slayer_room';
@@ -48,7 +48,7 @@ export const useGameViewModel = () => {
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number, drop?: string | null} | null>(null);
+  const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number, drop?: string | null, stats?: DimensionType[], xp?: number} | null>(null);
 
   useEffect(() => {
     // Subscribe to Global Random Tasks (Run once on mount)
@@ -187,8 +187,8 @@ export const useGameViewModel = () => {
       }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
 
-  // New: Add Todo (Enhanced)
-  const addTodo = useCallback(async (task: { label: string, note?: string, importance: number, difficulty: number }) => {
+  // New: Add Todo (Enhanced with Multiple Dimensions)
+  const addTodo = useCallback(async (task: { label: string, note?: string, importance: number, difficulty: number, dimensions: DimensionType[] }) => {
       if (!currentRoomId || !myPlayerId || isProcessing) return;
       setIsProcessing(true);
       try {
@@ -196,7 +196,8 @@ export const useGameViewModel = () => {
             label: task.label,
             note: task.note || '',
             importance: task.importance,
-            difficulty: task.difficulty
+            difficulty: task.difficulty,
+            dimensions: task.dimensions
           });
       } catch (e) {
           console.error("Add Todo failed", e);
@@ -215,14 +216,41 @@ export const useGameViewModel = () => {
         const result = await gameService.completeTodoTransaction(currentRoomId, myPlayerId, todoId);
         if (result.success) {
              setLastActionFeedback({
-                msg: 'TASK COMPLETE!',
+                msg: `Quest Complete!`,
                 val: 0,
-                drop: result.drop
+                drop: result.drop,
+                xp: result.xpGained,
+                stats: result.statsGained
+            });
+            setTimeout(() => setLastActionFeedback(null), 4000); // Longer feedback for reward
+        }
+      } catch (e) {
+          console.error("Complete Todo failed", e);
+      } finally {
+          setIsProcessing(false);
+      }
+  }, [currentRoomId, myPlayerId, isProcessing]);
+
+  // New: Fail Todo
+  const failTodo = useCallback(async (todoId: string) => {
+      if (!currentRoomId || !myPlayerId || isProcessing) return;
+      setIsProcessing(true);
+      setLastActionFeedback(null);
+
+      try {
+        const result = await gameService.failTodoTransaction(currentRoomId, myPlayerId, todoId);
+        if (result.success) {
+             setLastActionFeedback({
+                msg: `Failed...`,
+                val: 0,
+                drop: null,
+                xp: -result.xpLost, // Negative XP for feedback
+                stats: result.statsLost
             });
             setTimeout(() => setLastActionFeedback(null), 3000);
         }
       } catch (e) {
-          console.error("Complete Todo failed", e);
+          console.error("Fail Todo failed", e);
       } finally {
           setIsProcessing(false);
       }
@@ -258,18 +286,19 @@ export const useGameViewModel = () => {
     otherPlayers, 
     boss,
     logs,
-    randomTasks, // Exported to View
+    randomTasks, 
     loading: false, 
     isProcessing,
     lastActionFeedback,
     isLoggedIn: !!myPlayerId && !!currentRoomId, 
     joinGame,
     logout,
-    joinRaid, // New
+    joinRaid, 
     drinkWater,
     performAttack,
-    addTodo,      // New
-    completeTodo, // New
+    addTodo,      
+    completeTodo, 
+    failTodo,      // Exported
     completeQuest,
     submitGratitude,
     debugRespawn

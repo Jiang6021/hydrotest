@@ -26,7 +26,25 @@ export enum ActionType {
   ATTACK = 'ATTACK', // New Action Type
   GRATITUDE = 'GRATITUDE',
   QUEST = 'QUEST',
+  FAIL = 'FAIL', // New: Failed a task
 }
+
+// --- NEW: Dimensions ---
+export enum DimensionType {
+    RESILIENCE = 'RESILIENCE', // 堅韌
+    CHARM = 'CHARM',           // 魅力
+    ACADEMICS = 'ACADEMICS',   // 學識
+    PHYSIQUE = 'PHYSIQUE',     // 體魄
+    CREATIVITY = 'CREATIVITY'  // 創意
+}
+
+export const DIMENSION_CONFIG: Record<DimensionType, { label: string; icon: string; color: string; bg: string }> = {
+    [DimensionType.RESILIENCE]: { label: '堅韌', icon: '🛡️', color: 'text-yellow-400', bg: 'bg-yellow-500' },
+    [DimensionType.CHARM]:      { label: '魅力', icon: '✨', color: 'text-pink-400', bg: 'bg-pink-500' },
+    [DimensionType.ACADEMICS]:  { label: '學識', icon: '📚', color: 'text-blue-400', bg: 'bg-blue-500' },
+    [DimensionType.PHYSIQUE]:   { label: '體魄', icon: '💪', color: 'text-red-400', bg: 'bg-red-500' },
+    [DimensionType.CREATIVITY]: { label: '創意', icon: '🎨', color: 'text-purple-400', bg: 'bg-purple-500' },
+};
 
 export const BUFF_DESCRIPTIONS: Record<BuffType, string> = {
   [BuffType.NONE]: '',

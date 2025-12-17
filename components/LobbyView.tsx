@@ -1,17 +1,20 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Player, TodoItem } from '../types';
-import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw, Sparkles, X } from 'lucide-react';
+import { CheckCircle, Circle, Sun, Battery, Plus, Shuffle, ThumbsUp, RotateCcw, Sparkles, X, Skull } from 'lucide-react';
 import { CreateTaskView } from './CreateTaskView';
+import { DIMENSION_CONFIG, DimensionType } from '../constants';
 
 interface LobbyViewProps {
   player: Player;
   onCompleteQuest: (todoId: string) => void;
-  onAddTodo?: (task: { label: string, note?: string, importance: number, difficulty: number }) => void;
+  onAddTodo?: (task: { label: string, note?: string, importance: number, difficulty: number, dimension: DimensionType }) => void;
+  onFailTodo?: (todoId: string) => void; // New prop for giving up
   isProcessing: boolean;
   randomTasks: string[]; // Receives dynamic tasks from DB
 }
 
-export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, onAddTodo, isProcessing, randomTasks }) => {
+export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, onAddTodo, onFailTodo, isProcessing, randomTasks }) => {
   // State to toggle full screen Create View
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   
@@ -71,13 +74,14 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
             label: randomTaskSuggestion,
             note: '來自隨機任務建議',
             importance: 1,
-            difficulty: 1
+            difficulty: 1,
+            dimension: DimensionType.RESILIENCE // Default for random
         });
         setShowRandomModal(false); // Close modal on accept
     }
   };
 
-  const handleSaveNewTask = (task: { label: string, note: string, importance: number, difficulty: number }) => {
+  const handleSaveNewTask = (task: { label: string, note: string, importance: number, difficulty: number, dimension: DimensionType }) => {
       if (onAddTodo) {
           onAddTodo(task);
           setIsCreatingTask(false);
@@ -140,34 +144,73 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
             ) : (
                 // --- CUSTOM TODO LIST ---
                 <div className="grid grid-cols-1 gap-3">
-                    {todoList.map((todo) => (
-                        <button
-                            key={todo.id}
-                            onClick={() => onCompleteQuest(todo.id)}
-                            disabled={isProcessing}
-                            className="bg-slate-800 hover:bg-slate-700 active:scale-[0.98] border border-slate-700 hover:border-emerald-500 p-5 rounded-xl text-left transition-all shadow-md group relative overflow-hidden"
-                        >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-6 h-6 rounded-full border-2 border-slate-500 group-hover:border-emerald-400 flex items-center justify-center transition-colors">
-                                        <div className="w-3 h-3 bg-emerald-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-slate-200 group-hover:text-white transition-colors text-lg">{todo.label}</div>
-                                        {todo.note && <div className="text-xs text-slate-500 mt-1 truncate max-w-[200px]">{todo.note}</div>}
+                    {todoList.map((todo) => {
+                        const dimConfig = DIMENSION_CONFIG[todo.dimension || DimensionType.RESILIENCE];
+                        
+                        return (
+                            <div
+                                key={todo.id}
+                                className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md group relative overflow-hidden flex flex-col gap-3 transition-all hover:bg-slate-750 hover:border-slate-600"
+                            >
+                                {/* Dimension Tag */}
+                                <div className={`absolute top-0 right-0 px-2 py-0.5 rounded-bl-lg text-[9px] font-bold ${dimConfig.bg} text-white opacity-80`}>
+                                    {dimConfig.label}
+                                </div>
+
+                                <div className="flex items-start justify-between mt-2">
+                                    <div className="flex items-start gap-4 flex-1">
+                                        <div className={`w-8 h-8 rounded-full border-2 border-slate-600 flex items-center justify-center transition-colors shrink-0 bg-slate-900/50 mt-1`}>
+                                            <span className="text-sm">{dimConfig.icon}</span>
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-200 text-lg leading-tight">{todo.label}</div>
+                                            {todo.note && <div className="text-xs text-slate-500 mt-1 line-clamp-2">{todo.note}</div>}
+                                            
+                                            {/* Difficulty Stars */}
+                                            <div className="flex gap-1 mt-2">
+                                                {[...Array(todo.difficulty || 1)].map((_, i) => (
+                                                    <div key={i} className="w-1.5 h-3 bg-slate-600 rounded-full"></div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-1">
-                                    <Circle className="text-slate-600 group-hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" size={24} />
-                                    <div className="flex gap-1">
-                                        {[...Array(todo.difficulty || 1)].map((_, i) => (
-                                            <div key={i} className="w-1 h-3 bg-slate-700 rounded-full"></div>
-                                        ))}
-                                    </div>
+
+                                {/* Actions Row */}
+                                <div className="flex gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                                    {/* Fail/Delete Button */}
+                                    {onFailTodo && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if(confirm("Give up on this task? It will lower your stats.")) {
+                                                    onFailTodo(todo.id);
+                                                }
+                                            }}
+                                            disabled={isProcessing}
+                                            className="flex-1 py-2 bg-slate-900/50 hover:bg-red-900/20 border border-slate-700 hover:border-red-800 text-slate-500 hover:text-red-400 rounded-lg flex items-center justify-center gap-2 transition-colors active:scale-95"
+                                        >
+                                            <Skull size={16} />
+                                            <span className="text-xs font-bold">放棄</span>
+                                        </button>
+                                    )}
+
+                                    {/* Complete Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCompleteQuest(todo.id);
+                                        }}
+                                        disabled={isProcessing}
+                                        className={`flex-[3] py-2 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-emerald-600 hover:to-teal-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 border border-slate-500 hover:border-emerald-400 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]`}
+                                    >
+                                        <CheckCircle size={18} className="text-emerald-400 group-hover:text-white" />
+                                        <span className="text-xs font-bold uppercase tracking-wide">完成</span>
+                                    </button>
                                 </div>
                             </div>
-                        </button>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

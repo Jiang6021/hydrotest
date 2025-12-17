@@ -1,6 +1,6 @@
 
 import { RoomData, GameLog, Player } from '../types';
-import { BuffType, ActionType, DAMAGE_PER_DRINK, BOSS_MAX_HP, BOSS_HP_PER_PLAYER, MAX_PLAYER_LIVES, TRINKETS, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS } from '../constants';
+import { BuffType, ActionType, DAMAGE_PER_DRINK, BOSS_MAX_HP, BOSS_HP_PER_PLAYER, MAX_PLAYER_LIVES, TRINKETS, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS, DimensionType, DIMENSION_CONFIG } from '../constants';
 import { db } from '../firebaseConfig';
 import { ref, onValue, runTransaction, set, get } from 'firebase/database';
 
@@ -117,10 +117,16 @@ class GameService {
           isParticipatingToday: false, // Default to false, must opt-in
           inventory: [],
           completedQuests: [],
-          todos: {}
+          todos: {},
+          // Initialize Stats
+          stats: {
+             [DimensionType.RESILIENCE]: 0,
+             [DimensionType.CHARM]: 0,
+             [DimensionType.ACADEMICS]: 0,
+             [DimensionType.PHYSIQUE]: 0,
+             [DimensionType.CREATIVITY]: 0,
+          }
         };
-        
-        // REMOVED: Boss HP scaling on join. Now happens in joinRaidTransaction.
         
         // Log new player
         const logId = `sys_${Date.now()}`;
@@ -138,6 +144,18 @@ class GameService {
       } else {
         // Update name if they changed it, but keep stats
         currentData.players[playerId].name = playerName;
+        
+        // Backfill stats if missing (for existing users)
+        if (!currentData.players[playerId].stats) {
+            currentData.players[playerId].stats = {
+                 [DimensionType.RESILIENCE]: 0,
+                 [DimensionType.CHARM]: 0,
+                 [DimensionType.ACADEMICS]: 0,
+                 [DimensionType.PHYSIQUE]: 0,
+                 [DimensionType.CREATIVITY]: 0,
+            };
+        }
+        
         if (currentData.players[playerId].attacksPerformed === undefined) {
             currentData.players[playerId].attacksPerformed = 0;
         }
@@ -348,7 +366,7 @@ class GameService {
   }
 
   // --- NEW: Custom Todo Logic ---
-  async addTodoTransaction(roomId: string, playerId: string, task: { label: string, note: string, importance: number, difficulty: number }): Promise<boolean> {
+  async addTodoTransaction(roomId: string, playerId: string, task: { label: string, note: string, importance: number, difficulty: number, dimensions: DimensionType[] }): Promise<boolean> {
       const roomRef = ref(db, `rooms/${roomId}`);
       try {
           await runTransaction(roomRef, (currentData: any) => {
@@ -364,6 +382,7 @@ class GameService {
                   note: task.note,
                   importance: task.importance,
                   difficulty: task.difficulty,
+                  dimensions: task.dimensions, // Save Array
                   isCompleted: false,
                   createdAt: Date.now()
               };
@@ -376,9 +395,11 @@ class GameService {
       }
   }
 
-  async completeTodoTransaction(roomId: string, playerId: string, todoId: string): Promise<{ success: boolean; drop: string }> {
+  async completeTodoTransaction(roomId: string, playerId: string, todoId: string): Promise<{ success: boolean; drop: string, xpGained: number, statsGained: DimensionType[] }> {
       const roomRef = ref(db, `rooms/${roomId}`);
       let resultDrop = "";
+      let xpGained = 0;
+      let statsGained: DimensionType[] = [];
 
       try {
           await runTransaction(roomRef, (currentData: any) => {
@@ -387,9 +408,25 @@ class GameService {
               const player = currentData.players[playerId];
               if (!player.todos || !player.todos[todoId]) return;
 
-              // Remove the todo (or mark completed)
-              // Design choice: Remove it to keep list clean, but grant reward
-              const taskLabel = player.todos[todoId].label;
+              const todo = player.todos[todoId];
+              const taskLabel = todo.label;
+              // Handle backward compatibility (if 'dimension' exists instead of 'dimensions')
+              let dimList = todo.dimensions || (todo.dimension ? [todo.dimension] : [DimensionType.RESILIENCE]);
+              
+              const difficulty = todo.difficulty || 1;
+
+              // XP Calculation (Simple: Base 10 * Difficulty) per dimension
+              xpGained = 10 * difficulty;
+              
+              if (!player.stats) player.stats = {};
+
+              // Grant XP to ALL selected dimensions
+              dimList.forEach((d: DimensionType) => {
+                  player.stats[d] = (player.stats[d] || 0) + xpGained;
+                  statsGained.push(d);
+              });
+              
+              // Remove the todo
               delete player.todos[todoId];
 
               // Guaranteed Drop (similar to legacy quest)
@@ -401,6 +438,9 @@ class GameService {
               // Log
               const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
               if (!currentData.logs) currentData.logs = {};
+              
+              const dimNames = dimList.map((d: any) => DIMENSION_CONFIG[d as DimensionType]?.label).join(', ');
+
               currentData.logs[logId] = {
                   id: logId,
                   timestamp: Date.now(),
@@ -409,17 +449,74 @@ class GameService {
                   actionType: ActionType.QUEST,
                   value: taskLabel,
                   damageDealt: 0,
-                  message: `completed task: "${taskLabel}" and found ${randomTrinket}!`
+                  message: `gained +${xpGained} XP in [${dimNames}]!`
               };
 
               return currentData;
           });
 
-          if (resultDrop) return { success: true, drop: resultDrop };
-          return { success: false, drop: "" };
+          if (resultDrop) return { success: true, drop: resultDrop, xpGained, statsGained };
+          return { success: false, drop: "", xpGained: 0, statsGained: [] };
       } catch (e) {
           console.error("Complete Todo Failed", e);
-          return { success: false, drop: "" };
+          return { success: false, drop: "", xpGained: 0, statsGained: [] };
+      }
+  }
+
+  // New: Fail Todo (Give Up) - Decreases stats
+  async failTodoTransaction(roomId: string, playerId: string, todoId: string): Promise<{ success: boolean; xpLost: number, statsLost: DimensionType[] }> {
+      const roomRef = ref(db, `rooms/${roomId}`);
+      let xpLost = 0;
+      let statsLost: DimensionType[] = [];
+
+      try {
+          await runTransaction(roomRef, (currentData: any) => {
+              if (!currentData || !currentData.players || !currentData.players[playerId]) return;
+              
+              const player = currentData.players[playerId];
+              if (!player.todos || !player.todos[todoId]) return;
+
+              const todo = player.todos[todoId];
+              const taskLabel = todo.label;
+              let dimList = todo.dimensions || (todo.dimension ? [todo.dimension] : [DimensionType.RESILIENCE]);
+              const difficulty = todo.difficulty || 1;
+
+              // XP Loss Calculation (Base 5 * Difficulty)
+              xpLost = 5 * difficulty;
+
+              // Update Stats (Decrease, min 0)
+              if (!player.stats) player.stats = {};
+              
+              dimList.forEach((d: DimensionType) => {
+                   const currentVal = player.stats[d] || 0;
+                   player.stats[d] = Math.max(0, currentVal - xpLost);
+                   statsLost.push(d);
+              });
+
+              // Remove the todo
+              delete player.todos[todoId];
+
+              // Log
+              const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+              if (!currentData.logs) currentData.logs = {};
+              currentData.logs[logId] = {
+                  id: logId,
+                  timestamp: Date.now(),
+                  userId: playerId,
+                  userName: player.name,
+                  actionType: ActionType.FAIL,
+                  value: taskLabel,
+                  damageDealt: 0,
+                  message: `gave up on "${taskLabel}"... lost XP.`
+              };
+
+              return currentData;
+          });
+
+          return { success: true, xpLost, statsLost };
+      } catch (e) {
+          console.error("Fail Todo Failed", e);
+          return { success: false, xpLost: 0, statsLost: [] };
       }
   }
 
@@ -446,6 +543,10 @@ class GameService {
             
             player.activeBuff = newBuff;
             assignedBuff = newBuff;
+            
+            // Boost CHARM slightly for gratitude
+            if (!player.stats) player.stats = {};
+            player.stats[DimensionType.CHARM] = (player.stats[DimensionType.CHARM] || 0) + 5;
 
             // Log
             const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -459,7 +560,7 @@ class GameService {
                 value: text,
                 damageDealt: 0,
                 // Highlight Gratitude in logs
-                message: `shared gratitude: "${text}" and received a Blessing!`
+                message: `shared gratitude: "${text}", gained Charm & Blessing!`
             };
 
             return currentData;
@@ -494,6 +595,8 @@ class GameService {
                       p.activeBuff = BuffType.NONE;
                       p.todos = {}; // Clear todos on debug reset
                       p.isParticipatingToday = false; // Reset participation
+                      // Note: We do NOT reset RPG stats on debug respawn usually, but if you want:
+                      // p.stats = ...
                   });
               }
               
@@ -560,7 +663,10 @@ class GameService {
               p.todayWaterMl = 0;
               p.attacksPerformed = 0; // Reset attacks
               p.completedQuests = [];
-              p.todos = {}; // Reset daily todos
+              // p.todos = {}; // Decision: Do NOT clear todos daily, let them persist? Or clear? 
+              // Usually Todo lists persist. Let's comment this out so tasks stay.
+              // p.todos = {}; 
+              
               p.isParticipatingToday = false; // Reset Participation
               if (p.hp <= 0) p.hp = MAX_PLAYER_LIVES; // Revive if dead
           });

@@ -1,9 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Trash2, Paperclip, Check, HelpCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Check, HelpCircle } from 'lucide-react';
+import { DimensionType, DIMENSION_CONFIG } from '../constants';
 
 interface CreateTaskViewProps {
   onBack: () => void;
-  onSave: (task: { label: string, note: string, importance: number, difficulty: number }) => void;
+  onSave: (task: { label: string, note: string, importance: number, difficulty: number, dimensions: DimensionType[] }) => void;
 }
 
 export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }) => {
@@ -11,6 +13,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
   const [note, setNote] = useState('');
   const [importance, setImportance] = useState(1);
   const [difficulty, setDifficulty] = useState(1);
+  const [selectedDims, setSelectedDims] = useState<DimensionType[]>([DimensionType.RESILIENCE]);
 
   // Refs for auto-resizing textareas
   const labelRef = useRef<HTMLTextAreaElement>(null);
@@ -22,9 +25,24 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
       label,
       note,
       importance,
-      difficulty
+      difficulty,
+      dimensions: selectedDims
     });
   };
+
+  const toggleDimension = (dt: DimensionType) => {
+      if (selectedDims.includes(dt)) {
+          // Prevent removing the last one
+          if (selectedDims.length > 1) {
+              setSelectedDims(prev => prev.filter(d => d !== dt));
+          }
+      } else {
+          // Max 3 selectable
+          if (selectedDims.length < 3) {
+              setSelectedDims(prev => [...prev, dt]);
+          }
+      }
+  }
 
   // Auto-resize helper
   const adjustHeight = (ref: React.RefObject<HTMLTextAreaElement | null>) => {
@@ -70,8 +88,6 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
           <h1 className="text-xl font-bold text-white font-pixel tracking-wide">建立任務</h1>
         </div>
         <div className="flex items-center gap-4">
-          <button className="text-slate-600 p-1" disabled><Trash2 size={22} /></button>
-          <button className="text-slate-400 p-1 hover:bg-slate-800 rounded-full transition-colors"><Paperclip size={22} /></button>
           <button 
             onClick={handleSave}
             disabled={!label.trim()}
@@ -89,18 +105,9 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
         <div className="bg-slate-900 rounded-xl shadow-lg border border-slate-800 p-5 space-y-5 relative">
           <div className="flex justify-between items-start">
              <h2 className="text-lg font-bold text-slate-200">基本資訊</h2>
-             <div className="absolute top-5 right-5 text-slate-600"><HelpCircle size={20} /></div>
           </div>
           
-          {/* Tag Placeholder */}
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_8px_cyan]"></div>
-            <span className="bg-cyan-950/50 text-cyan-400 text-xs font-bold px-3 py-1 rounded-full border border-cyan-800/50">
-               日常任務
-            </span>
-          </div>
-
-          {/* Task Input (Auto-growing) */}
+          {/* Task Input */}
           <div className="border border-cyan-700/50 rounded-lg p-3 transition-colors focus-within:border-cyan-500 focus-within:bg-slate-800/50 bg-slate-950">
             <label className="text-xs text-cyan-500 font-bold px-0.5 block mb-1 uppercase tracking-wider">任務名稱</label>
             <textarea 
@@ -114,7 +121,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
             />
           </div>
 
-          {/* Note Input (Auto-growing) */}
+          {/* Note Input */}
           <div className="border border-slate-700 rounded-lg p-3 focus-within:border-slate-500 bg-slate-950">
              <div className="text-xs text-slate-500 mb-1 font-bold uppercase tracking-wider">備註</div>
              <textarea 
@@ -128,14 +135,40 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
           </div>
         </div>
 
-        {/* Card 2: Rewards / Difficulty */}
+        {/* Card 2: Rewards Settings */}
         <div className="bg-slate-900 rounded-xl shadow-lg border border-slate-800 p-5 space-y-6 relative">
            <div className="absolute top-5 right-5 text-slate-600"><HelpCircle size={20} /></div>
            <h2 className="text-lg font-bold text-slate-200 mb-2">獎勵設定</h2>
 
+            {/* Dimension Selector (Moved Here) */}
+           <div>
+            <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">提升屬性 (可選 1-3 項)</label>
+            <div className="flex flex-wrap gap-2">
+                {Object.values(DimensionType).map((dt) => {
+                    const config = DIMENSION_CONFIG[dt];
+                    const isSelected = selectedDims.includes(dt);
+                    return (
+                        <button
+                            key={dt}
+                            onClick={() => toggleDimension(dt)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all
+                                ${isSelected 
+                                    ? `bg-slate-800 border-${config.color.split('-')[1]}-500 shadow-sm ring-1 ring-${config.color.split('-')[1]}-500/50` 
+                                    : 'bg-slate-950 border-slate-800 hover:border-slate-600 opacity-60'
+                                }
+                            `}
+                        >
+                            <span className="text-lg">{config.icon}</span>
+                            <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-500'}`}>{config.label}</span>
+                        </button>
+                    )
+                })}
+            </div>
+          </div>
+
            {/* Importance Slider */}
            <div>
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">重要程度 (Importance)</label>
+              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">重要程度</label>
               <div className="relative pt-6 pb-2 px-2">
                  <input 
                     type="range" 
@@ -146,8 +179,6 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
                     onChange={(e) => setImportance(parseInt(e.target.value))}
                     className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-transparent"
                  />
-                 
-                 {/* Labels */}
                  <div className="flex justify-between mt-3 px-1">
                     {[1, 2, 3, 4].map((v) => (
                        <span key={v} className={`text-xs font-bold ${importance === v ? 'text-white' : 'text-slate-600'}`}>
@@ -155,8 +186,6 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
                        </span>
                     ))}
                  </div>
-                 
-                 {/* Current Value Indicator (Floating) */}
                  <div 
                     className={`absolute -top-1 px-3 py-1 rounded text-white text-xs font-bold ${getLevelColor(importance)} transition-all duration-200`}
                     style={{ left: `${((importance - 1) / 3) * 100}%`, transform: 'translateX(-50%)' }}
@@ -168,7 +197,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
 
            {/* Difficulty Slider */}
            <div>
-              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">困難程度 (Difficulty)</label>
+              <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">困難程度</label>
               <div className="relative pt-6 pb-2 px-2">
                  <input 
                     type="range" 
@@ -179,8 +208,6 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
                     onChange={(e) => setDifficulty(parseInt(e.target.value))}
                     className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                  />
-                  
-                 {/* Labels */}
                  <div className="flex justify-between mt-3 px-1">
                     {[1, 2, 3, 4].map((v) => (
                        <span key={v} className={`text-xs font-bold ${difficulty === v ? 'text-white' : 'text-slate-600'}`}>
@@ -188,8 +215,6 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
                        </span>
                     ))}
                  </div>
-                 
-                  {/* Current Value Indicator (Floating) */}
                   <div 
                     className={`absolute -top-1 px-3 py-1 rounded text-white text-xs font-bold ${getLevelColor(difficulty)} transition-all duration-200`}
                     style={{ left: `${((difficulty - 1) / 3) * 100}%`, transform: 'translateX(-50%)' }}

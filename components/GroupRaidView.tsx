@@ -29,7 +29,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   onJoinRaid,
   onDrink, 
   onAttack,
-  onOpenGratitude,
+  onOpenGratitude, // Added onOpenGratitude prop
   isProcessing,
   lastActionFeedback,
   debugRespawn

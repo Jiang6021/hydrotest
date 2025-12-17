@@ -1,4 +1,5 @@
-import { BuffType, ActionType } from './constants';
+
+import { BuffType, ActionType, DimensionType } from './constants';
 
 /**
  * Models
@@ -10,6 +11,7 @@ export interface TodoItem {
   note?: string;      // Optional note
   importance: number; // 1-4
   difficulty: number; // 1-4
+  dimensions: DimensionType[]; // Changed from single dimension to array
   isCompleted: boolean;
   createdAt: number;
 }
@@ -28,6 +30,7 @@ export interface Player {
   inventory?: string[]; // Cute trinkets collection
   completedQuests?: string[]; // Keep for legacy or achievements
   todos?: Record<string, TodoItem>; // New: Custom Todo List
+  stats?: Record<DimensionType, number>; // New: The 5 Attributes
 }
 
 export interface Boss {

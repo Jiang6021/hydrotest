@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
@@ -11,13 +11,13 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
   };
 
-  // Fix: Explicitly define constructor to ensure `this.props` is correctly typed by TypeScript
+  // 為 ErrorBoundary 類別組件添加顯式構造函數，以確保 `this.props` 能夠被 TypeScript 正確識別。
   constructor(props: ErrorBoundaryProps) {
     super(props);
   }
