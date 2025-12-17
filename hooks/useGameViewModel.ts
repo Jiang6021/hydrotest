@@ -187,8 +187,8 @@ export const useGameViewModel = () => {
       }
   }, [currentRoomId, myPlayerId, roomData, isProcessing]);
 
-  // New: Add Todo (Enhanced with Multiple Dimensions)
-  const addTodo = useCallback(async (task: { label: string, note?: string, importance: number, difficulty: number, dimensions: DimensionType[] }) => {
+  // New: Add Todo (Enhanced with Multiple Dimensions and Source)
+  const addTodo = useCallback(async (task: { label: string, note?: string, importance: number, difficulty: number, dimensions: DimensionType[], source?: 'RANDOM'|'CUSTOM' }) => {
       if (!currentRoomId || !myPlayerId || isProcessing) return;
       setIsProcessing(true);
       try {
@@ -197,7 +197,8 @@ export const useGameViewModel = () => {
             note: task.note || '',
             importance: task.importance,
             difficulty: task.difficulty,
-            dimensions: task.dimensions
+            dimensions: task.dimensions,
+            source: task.source // Pass source
           });
       } catch (e) {
           console.error("Add Todo failed", e);

@@ -366,7 +366,7 @@ class GameService {
   }
 
   // --- NEW: Custom Todo Logic ---
-  async addTodoTransaction(roomId: string, playerId: string, task: { label: string, note: string, importance: number, difficulty: number, dimensions: DimensionType[] }): Promise<boolean> {
+  async addTodoTransaction(roomId: string, playerId: string, task: { label: string, note: string, importance: number, difficulty: number, dimensions: DimensionType[], source?: 'RANDOM'|'CUSTOM' }): Promise<boolean> {
       const roomRef = ref(db, `rooms/${roomId}`);
       try {
           await runTransaction(roomRef, (currentData: any) => {
@@ -383,6 +383,7 @@ class GameService {
                   importance: task.importance,
                   difficulty: task.difficulty,
                   dimensions: task.dimensions, // Save Array
+                  source: task.source || 'CUSTOM', // Default to Custom
                   isCompleted: false,
                   createdAt: Date.now()
               };
@@ -410,6 +411,8 @@ class GameService {
 
               const todo = player.todos[todoId];
               const taskLabel = todo.label;
+              const source = todo.source || 'CUSTOM'; // Check source
+              
               // Handle backward compatibility (if 'dimension' exists instead of 'dimensions')
               let dimList = todo.dimensions || (todo.dimension ? [todo.dimension] : [DimensionType.RESILIENCE]);
               
@@ -435,22 +438,29 @@ class GameService {
               player.inventory.push(randomTrinket);
               resultDrop = randomTrinket;
 
-              // Log
-              const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-              if (!currentData.logs) currentData.logs = {};
-              
-              const dimNames = dimList.map((d: any) => DIMENSION_CONFIG[d as DimensionType]?.label).join(', ');
+              // --- LOGGING LOGIC CHANGE ---
+              // Only log if source is RANDOM (public interest). Custom tasks are private.
+              if (source === 'RANDOM') {
+                  const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                  if (!currentData.logs) currentData.logs = {};
+                  
+                  // New Message Format: "completed task: 'Task Name' and found Item!"
+                  let msg = `completed task: "${taskLabel}"`;
+                  if (resultDrop) {
+                      msg += ` and found ${resultDrop}!`;
+                  }
 
-              currentData.logs[logId] = {
-                  id: logId,
-                  timestamp: Date.now(),
-                  userId: playerId,
-                  userName: player.name,
-                  actionType: ActionType.QUEST,
-                  value: taskLabel,
-                  damageDealt: 0,
-                  message: `gained +${xpGained} XP in [${dimNames}]!`
-              };
+                  currentData.logs[logId] = {
+                      id: logId,
+                      timestamp: Date.now(),
+                      userId: playerId,
+                      userName: player.name,
+                      actionType: ActionType.QUEST,
+                      value: taskLabel,
+                      damageDealt: 0,
+                      message: msg
+                  };
+              }
 
               return currentData;
           });
@@ -560,7 +570,7 @@ class GameService {
                 value: text,
                 damageDealt: 0,
                 // Highlight Gratitude in logs
-                message: `shared gratitude: "${text}", gained Charm & Blessing!`
+                message: `shared gratitude: "${text}" and received a Blessing!`
             };
 
             return currentData;

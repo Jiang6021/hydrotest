@@ -9,7 +9,7 @@ interface LobbyViewProps {
   player: Player;
   onCompleteQuest: (todoId: string) => void;
   // Ensure 'dimensions' matches App.tsx
-  onAddTodo?: (task: { label: string, note?: string, importance: number, difficulty: number, dimensions: DimensionType[] }) => void;
+  onAddTodo?: (task: { label: string, note?: string, importance: number, difficulty: number, dimensions: DimensionType[], source?: 'RANDOM'|'CUSTOM' }) => void;
   onFailTodo?: (todoId: string) => void;
   isProcessing: boolean;
   randomTasks: string[];
@@ -52,13 +52,14 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
 
   const handleAcceptRandom = () => {
     if (onAddTodo && !isExhausted) {
-        // Correctly pass dimensions array
+        // Correctly pass dimensions array and Source=RANDOM
         onAddTodo({
             label: randomTaskSuggestion,
             note: '來自隨機任務建議',
             importance: 1,
             difficulty: 1,
-            dimensions: [DimensionType.RESILIENCE] 
+            dimensions: [DimensionType.RESILIENCE],
+            source: 'RANDOM' 
         });
         setShowRandomModal(false);
     }
@@ -66,7 +67,10 @@ export const LobbyView: React.FC<LobbyViewProps> = ({ player, onCompleteQuest, o
 
   const handleSaveNewTask = (task: { label: string, note: string, importance: number, difficulty: number, dimensions: DimensionType[] }) => {
       if (onAddTodo) {
-          onAddTodo(task);
+          onAddTodo({
+              ...task,
+              source: 'CUSTOM' // Default to Custom
+          });
           setIsCreatingTask(false);
       }
   };

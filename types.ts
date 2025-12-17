@@ -11,9 +11,10 @@ export interface TodoItem {
   note?: string;      // Optional note
   importance: number; // 1-4
   difficulty: number; // 1-4
-  dimensions: DimensionType[]; // Changed from single dimension to array
+  dimensions: DimensionType[]; 
   isCompleted: boolean;
   createdAt: number;
+  source?: 'RANDOM' | 'CUSTOM'; // New: To control logging visibility
 }
 
 export interface Player {

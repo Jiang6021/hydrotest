@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+
+import React, { Component, ErrorInfo, ReactNode } from 'react'; // 顯式導入 Component
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
@@ -11,11 +12,9 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+// 將 extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> 改為 extends Component<ErrorBoundaryProps, ErrorBoundaryState>
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  public state: ErrorBoundaryState = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
