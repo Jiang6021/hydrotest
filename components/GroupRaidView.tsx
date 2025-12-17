@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Player, GameLog, RoomData } from '../types';
 import { BossCard } from './BossCard';
 import { Droplets, Trophy, Sword, Sparkles, List, AlertCircle, Fingerprint, HelpCircle, ArrowUp } from 'lucide-react'; 
 import { BuffType, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS, SIP_VOLUME, ActionType } from '../constants';
-import { CC_IMAGE } from '../assets';
+import { CC_IMAGE, MESSAGE_SOUND_BASE64 } from '../assets'; // 導入 MESSAGE_SOUND_BASE64
 
 type RaidSubTab = '排行' | '動態';
 
@@ -83,6 +83,35 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
 
+  // 新增：用於播放訊息音效的 Audio 實例
+  const messageAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // 優化：音效初始化與清理 (使用 useRef 避免每次 Render 都重新建立實例)
+  useEffect(() => {
+    if (!messageAudioRef.current) {
+      messageAudioRef.current = new Audio(MESSAGE_SOUND_BASE64);
+    }
+    // 環境保護：清理函數，確保組件卸載時音訊狀態良好
+    return () => {
+      if (messageAudioRef.current) {
+        messageAudioRef.current.pause(); // 暫停任何正在播放的音訊
+        messageAudioRef.current.currentTime = 0; // 重置播放時間
+        messageAudioRef.current = null; // 幫助垃圾回收
+      }
+    };
+  }, []); // 空依賴陣列確保只在組件掛載和卸載時運行
+
+  // 播放訊息音效的函數
+  const playMessageSound = () => {
+    if (messageAudioRef.current) {
+      messageAudioRef.current.currentTime = 0; // 重置播放時間，讓音效可以快速連按從頭播放
+      messageAudioRef.current.play().catch(e => {
+        console.error("Error playing message sound:", e);
+      });
+    }
+  };
+
+
   // Check Tutorial Seen
   useEffect(() => {
       const hasSeen = localStorage.getItem('has_seen_raid_tutorial_v7'); // Version bumped for new step
@@ -92,7 +121,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   }, []);
   
   const handleNextStep = (e?: React.MouseEvent) => {
-      e?.stopPropagation();
+      e?.stopPropagation(); // Prevent backdrop click when button is clicked
       if (tutorialStep < TUTORIAL_STEPS.length - 1) {
           setTutorialStep(prev => prev + 1);
       } else {
@@ -197,7 +226,10 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
                                 跳過
                             </button>
                             <button 
-                                onClick={handleNextStep}
+                                onClick={(e) => { // 添加音效
+                                    playMessageSound();
+                                    handleNextStep(e);
+                                }}
                                 className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-full font-bold transition-colors shadow-lg active:scale-95"
                             >
                                 {tutorialStep < TUTORIAL_STEPS.length - 1 ? '下一步' : '我知道了'}
