@@ -17,10 +17,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     error: null
   };
 
-  // 為 ErrorBoundary 類別組件添加顯式構造函數，以確保 `this.props` 能夠被 TypeScript 正確識別。
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-  }
+  // 移除不必要的顯式構造函數，讓 TypeScript 能夠正確推斷 `this.props` 的類型。
+  // 在 React 類別組件中，如果構造函數沒有進行額外邏輯處理，通常不需要顯式定義。
+  // constructor(props: ErrorBoundaryProps) {
+  //   super(props);
+  // }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };

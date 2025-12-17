@@ -43,7 +43,8 @@ export const StatusView: React.FC<StatusViewProps> = ({ player, totalDamageContr
             />
           </div>
           
-          <h2 className="text-2xl font-bold text-white font-pixel mb-2">{player.name}</h2>
+          {/* Removed: Player Name */}
+          {/* <h2 className="text-2xl font-bold text-white font-pixel mb-2">{player.name}</h2> */}
       </div>
       
       {/* --- DIMENSION STATS DISPLAY - Retained --- */}
