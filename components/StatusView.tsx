@@ -7,9 +7,9 @@ import { Shield } from 'lucide-react';
 
 interface StatusViewProps {
   player: Player;
-  onOpenGratitude: () => void; // 雖然此處不再使用，但為保持 ViewModel 接口一致保留
-  isProcessing: boolean; // 不再使用，但為保持 ViewModel 接口一致保留
-  totalDamageContrib: number; // 僅用於 WaterSprite 的 isTeamGoalMet prop
+  onOpenGratitude: () => void;
+  isProcessing: boolean;
+  totalDamageContrib: number;
 }
 
 export const StatusView: React.FC<StatusViewProps> = ({ player, totalDamageContrib }) => {
@@ -31,7 +31,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ player, totalDamageContr
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 fade-in pb-20 pt-4">
       
-      {/* Avatar Section - Retained */}
+      {/* Avatar Section */}
       <div className="flex flex-col items-center justify-center py-6 relative">
           <div className="absolute top-0 w-full h-full bg-cyan-500/5 blur-[100px] rounded-full pointer-events-none"></div>
           
@@ -42,12 +42,9 @@ export const StatusView: React.FC<StatusViewProps> = ({ player, totalDamageContr
                 isTeamGoalMet={totalDamageContrib > 5000} 
             />
           </div>
-          
-          {/* Removed: Player Name */}
-          {/* <h2 className="text-2xl font-bold text-white font-pixel mb-2">{player.name}</h2> */}
       </div>
       
-      {/* --- DIMENSION STATS DISPLAY - Retained --- */}
+      {/* --- DIMENSION STATS DISPLAY --- */}
       <div className="px-1">
           <div className="text-slate-400 text-xs font-bold uppercase mb-3 flex items-center gap-2">
             <Shield size={14} /> Attributes
@@ -91,13 +88,6 @@ export const StatusView: React.FC<StatusViewProps> = ({ player, totalDamageContr
               })}
           </div>
       </div>
-
-      {/* The following sections have been removed:
-          - Player Hearts (Lives) display
-          - Buff Card / Gratitude button
-          - Today's Intake (Water Progress)
-          - Total Contribution (Damage Dealt)
-      */}
     </div>
   );
 };

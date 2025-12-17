@@ -11,17 +11,15 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = {
     hasError: false,
     error: null
   };
 
-  // 移除不必要的顯式構造函數，讓 TypeScript 能夠正確推斷 `this.props` 的類型。
-  // 在 React 類別組件中，如果構造函數沒有進行額外邏輯處理，通常不需要顯式定義。
-  // constructor(props: ErrorBoundaryProps) {
-  //   super(props);
-  // }
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };

@@ -200,7 +200,7 @@ export default function App() {
             )}
 
             {/* 2. QUEST COMPLETE OVERLAY (Stats Gained) */}
-            {(lastActionFeedback.stats || lastActionFeedback.xp) && (lastActionFeedback.xp > 0) && (
+            {(lastActionFeedback.stats || lastActionFeedback.xp) && ((lastActionFeedback.xp || 0) > 0) && (
                 <div className="bg-slate-900/90 border-2 border-amber-400 p-6 rounded-2xl shadow-[0_0_50px_rgba(251,191,36,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center max-w-sm mx-4 backdrop-blur-md">
                      <div className="mb-2 text-amber-400 animate-bounce">
                         <Trophy size={48} />
@@ -242,7 +242,7 @@ export default function App() {
             )}
 
             {/* 3. FAIL FEEDBACK */}
-              {(lastActionFeedback.xp && lastActionFeedback.xp < 0) && (
+              {((lastActionFeedback.xp || 0) < 0) && (
                    <div className="bg-slate-900/90 border-2 border-red-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center backdrop-blur-md">
                         <h2 className="text-xl font-bold text-red-500 mb-2">QUEST FAILED</h2>
                         <div className="text-2xl font-bold text-white mb-2">
