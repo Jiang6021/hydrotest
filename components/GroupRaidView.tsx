@@ -2,24 +2,35 @@
 import React, { useState, useEffect } from 'react';
 import { Boss, Player, GameLog, RoomData } from '../types';
 import { BossCard } from './BossCard';
-import { Droplets, Trophy, Sword, Heart, Sparkles, RotateCcw, Zap, List, AlertCircle, Fingerprint } from 'lucide-react'; // Import List icon for Logs tab
+import { Droplets, Trophy, Sword, Heart, Sparkles, RotateCcw, Zap, List, AlertCircle, Fingerprint, HelpCircle } from 'lucide-react'; 
 import { BuffType, DAILY_WATER_GOAL, WATER_PER_ATTACK_CHARGE, MAX_DAILY_ATTACKS, SIP_VOLUME, ActionType } from '../constants';
+import { CC_IMAGE } from '../assets';
 
-type RaidSubTab = '排行' | '動態'; // Define sub-tab types: Changed to Chinese
+type RaidSubTab = '排行' | '動態';
 
 interface GroupRaidViewProps {
   roomData: RoomData;
   currentPlayer: Player;
   otherPlayers: Player[];
   logs: GameLog[];
-  onJoinRaid: () => void; // New prop
+  onJoinRaid: () => void;
   onDrink: (ml: number) => void;
   onAttack: () => void;
   onOpenGratitude: () => void;
   isProcessing: boolean;
   lastActionFeedback: any;
-  debugRespawn: () => void; // Added Prop
+  debugRespawn: () => void;
 }
+
+const TUTORIAL_STEPS = [
+    "嘿！新來的勇者！歡迎來到【團隊討伐】戰場！我是你的導航小精靈。",
+    "抬頭看看！上方那個就是我們共同的敵人。它的血量是所有玩家共享的，大家要一起努力擊敗它！",
+    "想造成傷害？看到中間那個巨大的【ATTACK】按鈕了嗎？那是你的主要武器！",
+    "但攻擊需要彈藥... 你的【喝水量】就是彈藥！每喝 500ml 水，就能獲得 1 次攻擊充能。",
+    "左邊的【Buff】按鈕也很重要！寫下感恩日記，就能換取隨機戰鬥增益，像是雙倍傷害或爆擊！",
+    "最重要的一點：每天都要點擊【ACCEPT MISSION】加入戰局，你的貢獻才會被記錄到排行榜上喔！",
+    "就是這樣！現在，喝口水，準備開始你的冒險吧！"
+];
 
 export const GroupRaidView: React.FC<GroupRaidViewProps> = ({ 
   roomData, 
@@ -29,7 +40,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   onJoinRaid,
   onDrink, 
   onAttack,
-  onOpenGratitude, // Added onOpenGratitude prop
+  onOpenGratitude,
   isProcessing,
   lastActionFeedback,
   debugRespawn
@@ -50,11 +61,40 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   // NEW: Local state to manage active sub-tab, default to '排行'
   const [activeSubTab, setActiveSubTab] = useState<RaidSubTab>('排行');
 
+  // Tutorial State
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
   useEffect(() => {
     if (boss && !boss.isDefeated) {
         setIsVictoryDismissed(false);
     }
   }, [boss?.isDefeated]);
+
+  // Check Tutorial Seen
+  useEffect(() => {
+      const hasSeen = localStorage.getItem('has_seen_raid_tutorial_v1');
+      if (!hasSeen) {
+          setShowTutorial(true);
+      }
+  }, []);
+  
+  const handleNextStep = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (tutorialStep < TUTORIAL_STEPS.length - 1) {
+          setTutorialStep(prev => prev + 1);
+      } else {
+          // Finish
+          localStorage.setItem('has_seen_raid_tutorial_v1', 'true');
+          setShowTutorial(false);
+          setTutorialStep(0);
+      }
+  };
+
+  const restartTutorial = () => {
+      setTutorialStep(0);
+      setShowTutorial(true);
+  };
   
   // Attack Calculation
   const attacksPerformed = currentPlayer.attacksPerformed || 0;
@@ -70,6 +110,14 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
   return (
     <div className="space-y-5 animate-in slide-in-from-right-8 duration-300 fade-in pb-20 pt-2 relative">
         
+        {/* Help Button (Top Right Absolute) */}
+        <button 
+            onClick={restartTutorial}
+            className="absolute -top-2 right-0 p-2 text-slate-500 hover:text-cyan-400 transition-colors z-20"
+        >
+            <HelpCircle size={20} />
+        </button>
+
         {/* Boss Section (Always Visible) */}
         {boss && (
             <BossCard 
@@ -85,7 +133,7 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
             <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none bg-gradient-to-b from-transparent to-slate-800"></div>
 
             {/* --- NON-PARTICIPANT OVERLAY (MISSION BRIEFING) --- */}
-            {!isParticipating && !boss?.isDefeated && (
+            {!isParticipating && !boss?.isDefeated && !showTutorial && (
                 <div className="absolute inset-0 z-50 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
                     <div className="mb-4 text-orange-500 animate-pulse">
                         <AlertCircle size={48} />
@@ -270,112 +318,130 @@ export const GroupRaidView: React.FC<GroupRaidViewProps> = ({
         {/* --- CONDITIONAL RENDERING FOR SUB-TABS --- */}
         {activeSubTab === '排行' && (
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                {/* Header Block Removed */}
                 
                 <div className="divide-y divide-slate-800/50 max-h-60 overflow-y-auto custom-scrollbar">
                     {/* EMPTY STATE FOR RANKING */}
                     {participatingPlayers.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500 text-xs">
-                            No hunters active yet today.
+                        <div className="p-8 text-center">
+                            <p className="text-slate-500 text-sm">Waiting for hunters to join...</p>
                         </div>
                     ) : (
-                        sortedPlayers.map((p, index) => {
-                        const contribution = totalRaidDamage > 0 ? Math.round((p.totalDamageDealt / totalRaidDamage) * 100) : 0;
-                        const isMe = p.id === currentPlayer?.id;
-                        
-                        return (
-                            <div key={p.id} className={`flex items-center p-3 text-sm transition-all ${isMe ? 'bg-amber-900/10 border-l-2 border-amber-500' : ''}`}>
-                                <div className={`w-6 text-center font-pixel text-xs mr-2 ${index < 3 ? 'text-yellow-400' : 'text-slate-600'}`}>
-                                    {index + 1}
-                                </div>
-                                
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className={`font-bold text-xs ${isMe ? 'text-amber-300' : 'text-slate-300'}`}>
-                                            {p.name}
-                                        </span>
-                                        {p.hp <= 0 && <span className="text-[9px] bg-red-900 text-red-300 px-1 rounded">KO</span>}
+                        sortedPlayers.map((p, idx) => {
+                            const isMVP = idx === 0 && p.totalDamageDealt > 0;
+                            const isMe = p.id === currentPlayer.id;
+                            
+                            return (
+                                <div key={p.id} className={`flex items-center justify-between p-4 ${isMe ? 'bg-slate-800/30' : ''}`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold font-mono border-2 
+                                            ${idx === 0 ? 'bg-yellow-500 text-yellow-950 border-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 
+                                            idx === 1 ? 'bg-slate-400 text-slate-800 border-slate-200' :
+                                            idx === 2 ? 'bg-orange-700 text-orange-200 border-orange-500' :
+                                            'bg-slate-800 text-slate-500 border-slate-700'}
+                                        `}>
+                                            {idx + 1}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`font-bold text-sm ${isMe ? 'text-cyan-400' : 'text-slate-300'}`}>
+                                                    {p.name}
+                                                </span>
+                                                {isMVP && <span className="text-[9px] bg-yellow-500/20 text-yellow-300 px-1.5 py-0.5 rounded border border-yellow-500/50">MVP</span>}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500">
+                                                Lv.{Math.floor((p.stats?.RESILIENCE || 0)/100) + 1} • {p.activeBuff !== BuffType.NONE ? <span className="text-purple-400">{p.activeBuff.split('_')[0]}</span> : 'No Buff'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    
-                                    {/* Water Bar for everyone */}
-                                    <div className="w-full h-1.5 bg-slate-800 rounded-full flex gap-0.5">
-                                        <div 
-                                            className="h-full bg-cyan-500 rounded-full" 
-                                            style={{width: `${Math.min((p.todayWaterMl/DAILY_WATER_GOAL)*100, 100)}%`}}
-                                        ></div>
+                                    <div className="text-right">
+                                        <div className="text-orange-400 font-mono font-bold text-sm">{p.totalDamageDealt.toLocaleString()}</div>
+                                        <div className="text-[9px] text-slate-600">DAMAGE</div>
                                     </div>
-                                    <div className="text-[9px] text-slate-500 text-right mt-0.5">{p.todayWaterMl}ml</div>
                                 </div>
-
-                                <div className="text-right pl-4">
-                                    <div className="font-mono text-orange-400 font-bold text-xs">{p.totalDamageDealt}</div>
-                                    <div className="text-[9px] text-slate-600">{contribution}%</div>
-                                </div>
-                            </div>
-                        );
+                            );
                         })
                     )}
                 </div>
             </div>
         )}
 
+        {/* --- ACTIVITY LOG TAB --- */}
         {activeSubTab === '動態' && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 h-64 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-                <div className="overflow-y-auto flex-1 space-y-2 pr-2 custom-scrollbar">
-                    {logs.map((log) => (
-                    <div key={log.id} className="text-[10px] flex gap-2 text-slate-500 border-b border-slate-800/30 pb-1 last:border-0">
-                        <span className="text-slate-300 font-mono opacity-50 whitespace-nowrap">{new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        <span>
-                            <span className={log.userId === currentPlayer?.id ? 'text-cyan-500 font-bold' : 'text-slate-400'}>
-                                {log.userId === currentPlayer?.id ? 'You' : log.userName}
-                            </span> 
-                            <span className={log.actionType === ActionType.GRATITUDE ? 'text-purple-400' : ''}> {log.message.replace(log.userName, '')}</span>
-                        </span>
+             <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                 <div className="max-h-60 overflow-y-auto custom-scrollbar p-1 space-y-1">
+                    {logs.length === 0 ? (
+                        <div className="p-8 text-center text-slate-500 text-sm">No battle logs yet.</div>
+                    ) : (
+                        logs.map((log) => (
+                            <div key={log.id} className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/50 flex gap-2 items-start text-xs animate-in slide-in-from-left-2">
+                                <span className="text-slate-500 font-mono whitespace-nowrap pt-0.5">
+                                    {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                                <div>
+                                    <span className="font-bold text-cyan-500">{log.userName}</span>
+                                    <span className="text-slate-300 mx-1">
+                                        {log.message}
+                                    </span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                 </div>
+             </div>
+        )}
+
+         {/* --- TUTORIAL OVERLAY --- */}
+         {showTutorial && (
+            <div 
+                className="fixed inset-0 z-[150] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-sm animate-in fade-in duration-300 touch-none"
+                onClick={handleNextStep}
+            >
+                <div className="max-w-xs w-full flex flex-col items-center relative">
+                     {/* Sprite Image */}
+                    <div className="w-32 h-32 mb-6 relative animate-bounce z-10">
+                        <img 
+                            src={CC_IMAGE} 
+                            alt="Guide" 
+                            className="w-full h-full object-contain drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]" 
+                        />
                     </div>
-                    ))}
+                    
+                    {/* Text Bubble */}
+                    <div className="bg-slate-900 border-2 border-cyan-500 rounded-2xl p-6 relative shadow-[0_0_40px_rgba(34,211,238,0.2)] w-full z-10">
+                        {/* Triangle Pointer */}
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[14px] border-b-cyan-500"></div>
+                        
+                        <p className="text-white text-md leading-relaxed font-bold min-h-[80px] flex items-center justify-center text-center">
+                            {TUTORIAL_STEPS[tutorialStep]}
+                        </p>
+                        
+                        <div className="mt-4 flex justify-between items-center">
+                            <div className="flex gap-1.5">
+                                {TUTORIAL_STEPS.map((_, i) => (
+                                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === tutorialStep ? 'w-6 bg-cyan-400' : 'w-1.5 bg-slate-700'}`} />
+                                ))}
+                            </div>
+                            <span className="text-[10px] text-cyan-400 animate-pulse uppercase tracking-wider font-bold">
+                                {tutorialStep < TUTORIAL_STEPS.length - 1 ? '點擊繼續 ▶' : '開始戰鬥 ⚔️'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Skip Button */}
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            localStorage.setItem('has_seen_raid_tutorial_v1', 'true');
+                            setShowTutorial(false);
+                        }}
+                        className="mt-8 text-slate-500 text-xs hover:text-white underline decoration-slate-700 underline-offset-4"
+                    >
+                        跳過教學
+                    </button>
                 </div>
             </div>
         )}
 
-        {/* Victory Overlay (Daily Task Completed) */}
-        {boss && boss.isDefeated && !isVictoryDismissed && (
-         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-start justify-center pt-24 p-4 animate-in fade-in duration-500 pointer-events-none">
-            <div className="bg-slate-900/90 border-2 border-amber-500/50 p-6 rounded-2xl max-w-sm w-full text-center shadow-[0_0_50px_rgba(245,158,11,0.2)] pointer-events-auto transform scale-110">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                    <Trophy size={32} className="text-yellow-400 animate-bounce" />
-                    <h3 className="font-pixel text-amber-400 text-2xl">VICTORY!</h3>
-                </div>
-                
-                <div className="bg-slate-800/80 p-4 rounded-xl mb-4 border border-slate-700">
-                    <div className="text-xs text-slate-500 uppercase tracking-widest mb-2">MVP</div>
-                    <div className="text-xl font-bold text-white mb-1">{mvp?.name || 'Unknown'}</div>
-                    <div className="text-orange-400 font-mono text-sm">{mvp?.totalDamageDealt} Damage</div>
-                </div>
-
-                <p className="text-slate-400 text-xs mb-6">
-                    The Demon is defeated! <br/>
-                    Keep drinking water to prepare for tomorrow's battle.
-                </p>
-                
-                <div className="flex flex-col gap-3">
-                    <button 
-                        onClick={() => setIsVictoryDismissed(true)}
-                        className="text-slate-500 hover:text-white text-xs underline cursor-pointer"
-                    >
-                        Dismiss
-                    </button>
-                    
-                    {/* DEBUG: RESPAWN BUTTON */}
-                    <button 
-                        onClick={debugRespawn}
-                        className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 py-2 rounded text-xs font-bold"
-                    >
-                        <RotateCcw size={12} /> Respawn Boss & Reset (Debug)
-                    </button>
-                </div>
-            </div>
-         </div>
-      )}
     </div>
   );
 };
