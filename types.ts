@@ -32,6 +32,7 @@ export interface Player {
   completedQuests?: string[]; // Keep for legacy or achievements
   todos?: Record<string, TodoItem>; // New: Custom Todo List
   stats?: Record<DimensionType, number>; // New: The 5 Attributes
+  hasSeenTutorial?: boolean; // New: Persistent flag for tutorial
 }
 
 export interface Boss {

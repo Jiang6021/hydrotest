@@ -9,7 +9,6 @@ import { StorageView } from './components/StorageView';
 import { ProfileView } from './components/ProfileView';
 import { DIMENSION_CONFIG, DimensionType } from './constants';
 
-// Icons
 import { 
   Home, 
   User, 
@@ -18,8 +17,8 @@ import {
   Settings, 
   Sparkles,
   Trophy,
-  BarChart, // 新增：用於狀態頁面
-  UserCircle // 新增：用於個人資料頁面
+  BarChart, 
+  UserCircle 
 } from 'lucide-react';
 
 type Tab = 'LOBBY' | 'STATUS' | 'GROUP' | 'STORAGE' | 'PROFILE';
@@ -28,44 +27,37 @@ export default function App() {
   const [appStarted, setAppStarted] = useState(false);
   const [gratitudeInput, setGratitudeInput] = useState('');
   const [showGratitudeModal, setShowGratitudeModal] = useState(false);
-  
-  // Default to LOBBY as the "Home"
   const [activeTab, setActiveTab] = useState<Tab>('LOBBY');
-  
-  // Login State
   const [inputName, setInputName] = useState('');
   const DEFAULT_FRIEND_ROOM = 'friends_party_01'; 
 
-  // Call hook ONCE at the top level
   const { 
     roomData, 
     currentPlayer, 
     otherPlayers, 
     boss, 
     logs, 
-    randomTasks, // Get dynamic tasks
+    randomTasks,
     isProcessing, 
     lastActionFeedback,
     isLoggedIn,
     joinGame,
     logout,
-    joinRaid,      // New Hook
+    completeTutorial,
+    joinRaid,
     drinkWater,
-    addTodo,       // New
-    completeTodo,  // New
-    failTodo,      // New
-    completeQuest, // Legacy (unused in Lobby now)
+    addTodo,
+    completeTodo,
+    failTodo,
     submitGratitude,
     performAttack, 
     debugRespawn   
   } = useGameViewModel();
 
-  // 1. Cover Screen
   if (!appStarted) {
     return <GameCover onStart={() => setAppStarted(true)} />;
   }
 
-  // 2. Login / Lobby Screen
   if (!isLoggedIn || !roomData) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-inter force-gpu-render">
@@ -101,7 +93,6 @@ export default function App() {
     );
   }
 
-  // 2.5 Safety Check: If logged in but player data missing (e.g. DB reset), show sync/loading
   if (!currentPlayer) {
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400 font-inter">
@@ -117,7 +108,6 @@ export default function App() {
     );
   }
 
-  // 3. Main Dashboard Handlers
   const handleGratitudeSubmit = () => {
     if (gratitudeInput.trim().length > 0) {
       submitGratitude(gratitudeInput);
@@ -133,21 +123,17 @@ export default function App() {
 
   const totalRaidDamage = otherPlayers.reduce((acc, p) => acc + p.totalDamageDealt, 0);
 
-  // --- TAB DEFINITIONS ---
   const TABS: {id: Tab, icon: any, label: string}[] = [
       { id: 'LOBBY', icon: Home, label: 'Lobby' },
-      { id: 'STATUS', icon: BarChart, label: 'Status' }, // 從 User 更改為 BarChart
+      { id: 'STATUS', icon: BarChart, label: 'Status' }, 
       { id: 'GROUP', icon: Users, label: 'Group' },
       { id: 'STORAGE', icon: Package, label: 'Storage' },
-      { id: 'PROFILE', icon: UserCircle, label: 'Profile' }, // 從 Settings 更改為 UserCircle
+      { id: 'PROFILE', icon: UserCircle, label: 'Profile' }, 
   ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-inter">
-      
-      {/* Main Content Area */}
       <div className="max-w-md mx-auto p-4 min-h-screen relative force-gpu-render">
-         {/* Render Active View */}
          {activeTab === 'LOBBY' && (
             <LobbyView 
                 player={currentPlayer} 
@@ -155,7 +141,7 @@ export default function App() {
                 onAddTodo={addTodo} 
                 onFailTodo={failTodo}
                 isProcessing={isProcessing} 
-                randomTasks={randomTasks} // Passed prop
+                randomTasks={randomTasks}
             />
          )}
          {activeTab === 'STATUS' && <StatusView player={currentPlayer} onOpenGratitude={() => setShowGratitudeModal(true)} isProcessing={isProcessing} totalDamageContrib={totalRaidDamage} />}
@@ -164,10 +150,11 @@ export default function App() {
                 currentPlayer={currentPlayer}
                 otherPlayers={otherPlayers}
                 logs={logs}
-                onJoinRaid={joinRaid} // Pass join func
+                onJoinRaid={joinRaid}
                 onDrink={drinkWater}
                 onAttack={performAttack}
                 onOpenGratitude={() => setShowGratitudeModal(true)}
+                onCompleteTutorial={completeTutorial}
                 isProcessing={isProcessing}
                 lastActionFeedback={lastActionFeedback}
                 debugRespawn={debugRespawn}
@@ -175,11 +162,8 @@ export default function App() {
          {activeTab === 'STORAGE' && <StorageView player={currentPlayer} />}
          {activeTab === 'PROFILE' && <ProfileView player={currentPlayer} onLogout={handleLogout} />}
 
-        {/* Global Feedback Overlay */}
         {lastActionFeedback && (
           <div className="fixed inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center">
-            
-            {/* 1. SIMPLE FEEDBACK (Damage, Heal, Drink) - Keep original style */}
             {(!lastActionFeedback.stats && !lastActionFeedback.xp && lastActionFeedback.val !== undefined) && (
                  <div className="flex flex-col items-center gap-2">
                     {lastActionFeedback.val > 0 && (
@@ -200,8 +184,6 @@ export default function App() {
                     )}
                  </div>
             )}
-
-            {/* 2. QUEST COMPLETE OVERLAY (Stats Gained) */}
             {(lastActionFeedback.stats || lastActionFeedback.xp) && ((lastActionFeedback.xp || 0) > 0) && (
                 <div className="bg-slate-900/90 border-2 border-amber-400 p-6 rounded-2xl shadow-[0_0_50px_rgba(251,191,36,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center max-w-sm mx-4 backdrop-blur-md">
                      <div className="mb-2 text-amber-400 animate-bounce">
@@ -209,13 +191,9 @@ export default function App() {
                      </div>
                      <h2 className="text-2xl font-bold text-white mb-1 font-pixel tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500">QUEST COMPLETE</h2>
                      <div className="h-px w-24 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-4"></div>
-                     
-                     {/* XP Gain */}
                      <div className="text-4xl font-black text-white mb-4 drop-shadow-lg">
                         +{lastActionFeedback.xp} <span className="text-sm font-bold text-slate-400">XP</span>
                      </div>
-
-                     {/* Stats Gained */}
                      {lastActionFeedback.stats && lastActionFeedback.stats.length > 0 && (
                         <div className="flex flex-wrap justify-center gap-2 mb-4">
                             {lastActionFeedback.stats.map((dt: DimensionType, idx: number) => {
@@ -229,8 +207,6 @@ export default function App() {
                             })}
                         </div>
                      )}
-
-                     {/* Drop */}
                      {lastActionFeedback.drop && (
                         <div className="mt-2 bg-slate-800/80 p-3 rounded-xl border border-yellow-500/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 delay-300">
                              <div className="text-3xl animate-pulse">{lastActionFeedback.drop}</div>
@@ -242,8 +218,6 @@ export default function App() {
                      )}
                 </div>
             )}
-
-            {/* 3. FAIL FEEDBACK */}
               {((lastActionFeedback.xp || 0) < 0) && (
                    <div className="bg-slate-900/90 border-2 border-red-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center backdrop-blur-md">
                         <h2 className="text-xl font-bold text-red-500 mb-2">QUEST FAILED</h2>
@@ -253,12 +227,10 @@ export default function App() {
                         <p className="text-xs text-slate-400">Don't give up next time!</p>
                    </div>
               )}
-
           </div>
         )}
       </div>
 
-      {/* --- 5-TAB BOTTOM NAVIGATION --- */}
       <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 pb-safe z-50">
          <div className="max-w-md mx-auto grid grid-cols-5">
             {TABS.map((tab) => {
@@ -285,7 +257,6 @@ export default function App() {
          </div>
       </div>
 
-      {/* Gratitude Modal (Global) - Moved here from StatusView */}
       {showGratitudeModal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] backdrop-blur-sm animate-in fade-in duration-200 force-gpu-render">
               <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
