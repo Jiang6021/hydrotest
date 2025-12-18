@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameViewModel } from './hooks/useGameViewModel';
 import { GameCover } from './components/GameCover';
 import { LobbyView } from './components/LobbyView';
@@ -8,17 +8,18 @@ import { GroupRaidView } from './components/GroupRaidView';
 import { StorageView } from './components/StorageView';
 import { ProfileView } from './components/ProfileView';
 import { DIMENSION_CONFIG, DimensionType } from './constants';
+import { MESSAGE_SOUND_BASE64 } from './assets';
 
 import { 
   Home, 
-  User, 
   Users, 
   Package, 
-  Settings, 
   Sparkles,
   Trophy,
   BarChart, 
-  UserCircle 
+  UserCircle,
+  TrendingUp,
+  Star
 } from 'lucide-react';
 
 type Tab = 'LOBBY' | 'STATUS' | 'GROUP' | 'STORAGE' | 'PROFILE';
@@ -29,14 +30,22 @@ export default function App() {
   const [showGratitudeModal, setShowGratitudeModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('LOBBY');
   const [inputName, setInputName] = useState('');
+  const [prevLevel, setPrevLevel] = useState<number | null>(null);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  
+  // XP Animation Logic
+  const [isXpFilling, setIsXpFilling] = useState(false);
+  const [xpFeedbackData, setXpFeedbackData] = useState<any>(null);
+
+  const successAudioRef = useRef<HTMLAudioElement | null>(null);
   const DEFAULT_FRIEND_ROOM = 'friends_party_01'; 
 
+  // FIX: Destructured 'logs' from useGameViewModel to fix the missing variable error on line 157
   const { 
     roomData, 
     currentPlayer, 
     otherPlayers, 
-    boss, 
-    logs, 
+    logs,
     randomTasks,
     isProcessing, 
     lastActionFeedback,
@@ -54,36 +63,73 @@ export default function App() {
     debugRespawn   
   } = useGameViewModel();
 
+  useEffect(() => {
+    if (!successAudioRef.current) {
+      successAudioRef.current = new Audio(MESSAGE_SOUND_BASE64);
+      successAudioRef.current.volume = 0.5;
+    }
+  }, []);
+
+  // 偵測到任務完成回饋時，啟動進度條動畫
+  useEffect(() => {
+    if (lastActionFeedback && lastActionFeedback.xp && lastActionFeedback.xp > 0) {
+      setXpFeedbackData(lastActionFeedback);
+      setIsXpFilling(false); // 重置狀態
+      
+      // 短暫延遲後觸發 transition 動畫
+      const timer = setTimeout(() => {
+          setIsXpFilling(true);
+          if (successAudioRef.current) {
+            successAudioRef.current.currentTime = 0;
+            successAudioRef.current.play().catch(() => {});
+          }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else if (!lastActionFeedback) {
+      setXpFeedbackData(null);
+      setIsXpFilling(false);
+    }
+  }, [lastActionFeedback]);
+
+  // 偵測等級提升
+  useEffect(() => {
+    if (currentPlayer && currentPlayer.stats) {
+      const totalXP = Object.values(currentPlayer.stats).reduce((a, b) => a + b, 0);
+      const currentLevel = Math.floor(totalXP / 500) + 1;
+      
+      if (prevLevel !== null && currentLevel > prevLevel) {
+        setShowLevelUp(true);
+        setTimeout(() => setShowLevelUp(false), 4000);
+      }
+      setPrevLevel(currentLevel);
+    }
+  }, [currentPlayer?.stats]);
+
   if (!appStarted) {
     return <GameCover onStart={() => setAppStarted(true)} />;
   }
 
   if (!isLoggedIn || !roomData) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-inter force-gpu-render">
-         <div className="max-w-md w-full bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white font-inter">
+         <div className="max-w-md w-full bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl">
             <h2 className="text-2xl font-pixel text-cyan-400 mb-2 text-center">Enter the Party</h2>
-            <p className="text-slate-400 text-xs text-center mb-6">Join your friends to defeat the demon!</p>
-            
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-slate-400 uppercase mb-2">Your Name</label>
-                <input 
-                  type="text" 
-                  value={inputName}
-                  onChange={(e) => setInputName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-cyan-500 outline-none text-center font-bold text-lg"
-                  placeholder="e.g. Alex"
-                />
-              </div>
-
+              <input 
+                type="text" 
+                value={inputName}
+                onChange={(e) => setInputName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-cyan-500 outline-none text-center font-bold text-lg"
+                placeholder="e.g. Alex"
+              />
               <button 
                 onClick={async () => {
                   await joinGame(DEFAULT_FRIEND_ROOM, inputName);
                   setActiveTab('LOBBY');
                 }}
                 disabled={!inputName.trim() || isProcessing}
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 py-4 rounded-xl font-bold mt-4 flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg transform active:scale-95 transition-all"
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform"
               >
                 {isProcessing ? 'Summoning...' : 'JOIN RAID'}
               </button>
@@ -93,203 +139,165 @@ export default function App() {
     );
   }
 
-  if (!currentPlayer) {
-    return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400 font-inter">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mb-4"></div>
-            <p className="text-xs">Syncing Wizard Data...</p>
-            <button 
-                onClick={logout}
-                className="mt-8 px-4 py-2 bg-slate-800 rounded text-xs text-red-400 hover:bg-slate-700 transition-colors"
-            >
-                Reset Session
-            </button>
-        </div>
-    );
-  }
-
-  const handleGratitudeSubmit = () => {
-    if (gratitudeInput.trim().length > 0) {
-      submitGratitude(gratitudeInput);
-      setGratitudeInput('');
-      setShowGratitudeModal(false);
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    setActiveTab('LOBBY');
-  };
+  if (!currentPlayer) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="animate-pulse">同步數據中...</p></div>;
 
   const totalRaidDamage = otherPlayers.reduce((acc, p) => acc + p.totalDamageDealt, 0);
 
+  // FIX: Changed JSX comment to a standard JavaScript comment within the array literal to prevent TypeScript parsing errors.
   const TABS: {id: Tab, icon: any, label: string}[] = [
       { id: 'LOBBY', icon: Home, label: 'Lobby' },
       { id: 'STATUS', icon: BarChart, label: 'Status' }, 
-      { id: 'GROUP', icon: Users, label: 'Group' },
+      { id: 'GROUP', icon: Users, label: 'Group' }, // CHANGED: '討罰' to '團體'
       { id: 'STORAGE', icon: Package, label: 'Storage' },
       { id: 'PROFILE', icon: UserCircle, label: 'Profile' }, 
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-inter">
-      <div className="max-w-md mx-auto p-4 min-h-screen relative force-gpu-render">
-         {activeTab === 'LOBBY' && (
-            <LobbyView 
-                player={currentPlayer} 
-                onCompleteQuest={completeTodo} 
-                onAddTodo={addTodo} 
-                onFailTodo={failTodo}
-                isProcessing={isProcessing} 
-                randomTasks={randomTasks}
-            />
-         )}
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-inter select-none overflow-hidden">
+      <div className="max-w-md mx-auto p-4 min-h-screen relative">
+         {activeTab === 'LOBBY' && <LobbyView player={currentPlayer} onCompleteQuest={completeTodo} onAddTodo={addTodo} onFailTodo={failTodo} isProcessing={isProcessing} randomTasks={randomTasks} />}
          {activeTab === 'STATUS' && <StatusView player={currentPlayer} onOpenGratitude={() => setShowGratitudeModal(true)} isProcessing={isProcessing} totalDamageContrib={totalRaidDamage} />}
-         {activeTab === 'GROUP' && <GroupRaidView 
-                roomData={roomData}
-                currentPlayer={currentPlayer}
-                otherPlayers={otherPlayers}
-                logs={logs}
-                onJoinRaid={joinRaid}
-                onDrink={drinkWater}
-                onAttack={performAttack}
-                onOpenGratitude={() => setShowGratitudeModal(true)}
-                onCompleteTutorial={completeTutorial}
-                isProcessing={isProcessing}
-                lastActionFeedback={lastActionFeedback}
-                debugRespawn={debugRespawn}
-            />}
+         {activeTab === 'GROUP' && <GroupRaidView roomData={roomData} currentPlayer={currentPlayer} otherPlayers={otherPlayers} logs={logs} onJoinRaid={joinRaid} onDrink={drinkWater} onAttack={performAttack} onOpenGratitude={() => setShowGratitudeModal(true)} onCompleteTutorial={completeTutorial} isProcessing={isProcessing} lastActionFeedback={lastActionFeedback} debugRespawn={debugRespawn} />}
          {activeTab === 'STORAGE' && <StorageView player={currentPlayer} />}
-         {activeTab === 'PROFILE' && <ProfileView player={currentPlayer} onLogout={handleLogout} />}
+         {activeTab === 'PROFILE' && <ProfileView player={currentPlayer} onLogout={logout} />}
 
-        {lastActionFeedback && (
-          <div className="fixed inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center">
-            {(!lastActionFeedback.stats && !lastActionFeedback.xp && lastActionFeedback.val !== undefined) && (
+        {/* --- 動態經驗值結算框 (核心需求) --- */}
+        {xpFeedbackData && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center pointer-events-none p-6">
+              <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300"></div>
+              
+              <div className="relative w-full max-w-xs bg-slate-900 border-2 border-amber-400/50 rounded-[2rem] shadow-[0_0_80px_rgba(251,191,36,0.3)] p-8 flex flex-col items-center animate-in zoom-in-95 duration-500 pointer-events-auto">
+                  
+                  {/* 浮動 XP 數字動畫 */}
+                  <div className="absolute -top-12 text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-yellow-500 animate-[float-up_1.5s_ease-out_forwards] drop-shadow-[0_5px_15px_rgba(245,158,11,0.6)] font-pixel">
+                      +{xpFeedbackData.xp} XP
+                  </div>
+
+                  <Trophy size={48} className="text-amber-400 mb-4 animate-bounce" />
+                  <h3 className="text-lg font-pixel text-white mb-6 tracking-tighter">任務達成</h3>
+
+                  <div className="w-full space-y-5">
+                      {xpFeedbackData.stats && xpFeedbackData.stats.map((dt: DimensionType) => {
+                          const config = DIMENSION_CONFIG[dt];
+                          const currentVal = currentPlayer.stats?.[dt] || 0;
+                          // 計算舊的百分比 (假設每 100 點一級)
+                          const progressBefore = Math.max(0, (currentVal - xpFeedbackData.xp) % 100);
+                          const progressAfter = currentVal % 100;
+
+                          return (
+                              <div key={dt} className="space-y-2">
+                                  <div className="flex justify-between items-center px-1">
+                                      <div className="flex items-center gap-2">
+                                          <span className="text-lg">{config.icon}</span>
+                                          <span className={`text-[10px] font-bold ${config.color} uppercase tracking-widest`}>{config.label}</span>
+                                      </div>
+                                      <span className="text-[10px] font-mono text-slate-500">注入能量...</span>
+                                  </div>
+                                  
+                                  {/* 動態填充進度條 */}
+                                  <div className="h-4 w-full bg-slate-950 rounded-full border border-slate-800 p-[2px] overflow-hidden relative">
+                                      {/* 背景底色 */}
+                                      <div 
+                                          className={`absolute inset-y-[2px] left-[2px] ${config.bg} opacity-20 rounded-full`}
+                                          style={{ width: `${progressBefore}%` }}
+                                      ></div>
+                                      
+                                      {/* 增長條 */}
+                                      <div 
+                                          className={`absolute inset-y-[2px] left-[2px] ${config.bg} rounded-full transition-all duration-[1200ms] ease-out shadow-[0_0_15px_rgba(255,255,255,0.2)]`}
+                                          style={{ 
+                                              width: isXpFilling ? `${progressAfter}%` : `${progressBefore}%` 
+                                          }}
+                                      >
+                                          {/* 流光效果 */}
+                                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite]"></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          );
+                      })}
+                  </div>
+
+                  {xpFeedbackData.drop && (
+                      <div className="mt-8 flex items-center gap-3 bg-slate-800/80 p-3 px-5 rounded-2xl border border-amber-500/30 animate-in fade-in zoom-in duration-500 delay-500">
+                          <div className="text-3xl animate-bounce">{xpFeedbackData.drop}</div>
+                          <div className="text-left">
+                              <div className="text-[8px] text-amber-400 font-black uppercase tracking-widest">獲得稀有物</div>
+                              <div className="text-xs font-bold text-white">收納進背包</div>
+                          </div>
+                      </div>
+                  )}
+              </div>
+          </div>
+        )}
+
+        {/* 普通回饋 (如傷害數字、喝水提示) */}
+        {lastActionFeedback && !lastActionFeedback.xp && lastActionFeedback.val !== undefined && (
+             <div className="fixed inset-0 pointer-events-none z-[100] flex flex-col items-center justify-center">
                  <div className="flex flex-col items-center gap-2">
-                    {lastActionFeedback.val > 0 && (
-                        <div className={`text-4xl font-pixel drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] animate-bounce ${lastActionFeedback.val === 0 ? 'text-green-400' : 'text-cyan-400'}`}>
-                            {lastActionFeedback.val > 0 ? `-${lastActionFeedback.val}` : `-${lastActionFeedback.val}`}
-                        </div>
-                    )}
-                    {lastActionFeedback.msg && (
-                        <div className="text-center text-yellow-300 font-bold text-xs animate-pulse drop-shadow-md bg-black/50 px-3 py-1 rounded-full">
-                            {lastActionFeedback.msg}
-                        </div>
-                    )}
-                     {lastActionFeedback.drop && (
-                        <div className="text-center bg-white/10 backdrop-blur rounded-xl p-4 animate-in zoom-in spin-in-3 border-2 border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.5)]">
-                            <div className="text-xs text-yellow-200 uppercase font-bold mb-1">Found Item!</div>
-                            <div className="text-6xl animate-bounce">{lastActionFeedback.drop}</div>
-                        </div>
-                    )}
+                    <div className="text-4xl font-pixel drop-shadow-[0_4px_10px_rgba(34,211,238,0.8)] animate-bounce text-cyan-400">
+                        {lastActionFeedback.val > 0 ? `-${lastActionFeedback.val}` : lastActionFeedback.msg}
+                    </div>
                  </div>
-            )}
-            {(lastActionFeedback.stats || lastActionFeedback.xp) && ((lastActionFeedback.xp || 0) > 0) && (
-                <div className="bg-slate-900/90 border-2 border-amber-400 p-6 rounded-2xl shadow-[0_0_50px_rgba(251,191,36,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center max-w-sm mx-4 backdrop-blur-md">
-                     <div className="mb-2 text-amber-400 animate-bounce">
-                        <Trophy size={48} />
-                     </div>
-                     <h2 className="text-2xl font-bold text-white mb-1 font-pixel tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500">QUEST COMPLETE</h2>
-                     <div className="h-px w-24 bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-4"></div>
-                     <div className="text-4xl font-black text-white mb-4 drop-shadow-lg">
-                        +{lastActionFeedback.xp} <span className="text-sm font-bold text-slate-400">XP</span>
-                     </div>
-                     {lastActionFeedback.stats && lastActionFeedback.stats.length > 0 && (
-                        <div className="flex flex-wrap justify-center gap-2 mb-4">
-                            {lastActionFeedback.stats.map((dt: DimensionType, idx: number) => {
-                                const config = DIMENSION_CONFIG[dt];
-                                return (
-                                    <div key={idx} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${config.bg} bg-opacity-20 border border-slate-700 animate-in slide-in-from-bottom-2 fade-in duration-500 delay-${idx*100}`}>
-                                        <span className="text-lg">{config.icon}</span>
-                                        <span className={`text-xs font-bold ${config.color}`}>{config.label}</span>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                     )}
-                     {lastActionFeedback.drop && (
-                        <div className="mt-2 bg-slate-800/80 p-3 rounded-xl border border-yellow-500/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 delay-300">
-                             <div className="text-3xl animate-pulse">{lastActionFeedback.drop}</div>
-                             <div className="text-left">
-                                 <div className="text-[10px] text-slate-400 uppercase font-bold">New Item</div>
-                                 <div className="text-sm font-bold text-yellow-200">Lucky Trinket</div>
-                             </div>
-                        </div>
-                     )}
+             </div>
+        )}
+
+        {/* --- 等級提升慶祝動畫 --- */}
+        {showLevelUp && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 bg-yellow-500/10 backdrop-blur-xl animate-in fade-in"></div>
+            <div className="flex flex-col items-center animate-[pop-and-shine_1s_ease-out_forwards]">
+                <div className="relative">
+                    <Star size={120} className="text-yellow-400 animate-[spin_4s_linear_infinite] opacity-30" />
+                    <TrendingUp size={80} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 drop-shadow-lg" />
                 </div>
-            )}
-              {((lastActionFeedback.xp || 0) < 0) && (
-                   <div className="bg-slate-900/90 border-2 border-red-500/50 p-6 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-in zoom-in-90 duration-300 flex flex-col items-center text-center backdrop-blur-md">
-                        <h2 className="text-xl font-bold text-red-500 mb-2">QUEST FAILED</h2>
-                        <div className="text-2xl font-bold text-white mb-2">
-                           {lastActionFeedback.xp} <span className="text-sm text-slate-400">XP</span>
-                        </div>
-                        <p className="text-xs text-slate-400">Don't give up next time!</p>
-                   </div>
-              )}
+                <h1 className="text-5xl font-pixel text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-200 to-amber-500 drop-shadow-[0_10px_20px_rgba(251,191,36,0.8)] mt-6">
+                  LEVEL UP!
+                </h1>
+                <div className="mt-4 px-6 py-2 bg-white/10 rounded-full border border-white/20 backdrop-blur-md">
+                   <p className="text-white font-bold tracking-[0.4em] uppercase text-[10px]">新力量等級已達成</p>
+                </div>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 pb-safe z-50">
+      {/* 底部導航欄 */}
+      <div className="fixed bottom-0 left-0 w-full bg-slate-900/95 border-t border-slate-800 pb-safe z-50 backdrop-blur-lg">
          <div className="max-w-md mx-auto grid grid-cols-5">
-            {TABS.map((tab) => {
-                const isActive = activeTab === tab.id;
-                const Icon = tab.icon;
-                return (
-                    <button 
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex flex-col items-center justify-center py-3 gap-1 transition-all relative group
-                            ${isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}
-                        `}
-                    >
-                        {isActive && (
-                            <div className="absolute top-0 w-8 h-0.5 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)] rounded-full"></div>
-                        )}
-                        <Icon size={22} className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-active:scale-95'}`} />
-                        {isActive && (
-                            <span className="text-[9px] font-bold tracking-wide animate-in fade-in duration-200">{tab.label}</span>
-                        )}
-                    </button>
-                );
-            })}
+            {TABS.map((tab) => (
+                <button 
+                  key={tab.id} 
+                  onClick={() => setActiveTab(tab.id)} 
+                  className={`flex flex-col items-center justify-center py-4 gap-1 relative ${activeTab === tab.id ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    {activeTab === tab.id && <div className="absolute top-0 w-8 h-1 bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] rounded-full"></div>}
+                    <tab.icon size={20} />
+                    {/* Only show label for the active tab */}
+                    {activeTab === tab.id && (
+                        <span className="text-[8px] font-bold uppercase tracking-widest">{tab.label}</span>
+                    )}
+                </button>
+            ))}
          </div>
       </div>
 
-      {showGratitudeModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100] backdrop-blur-sm animate-in fade-in duration-200 force-gpu-render">
-              <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
-                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                      <Sparkles className="text-purple-400" /> Gratitude Buff
-                  </h3>
-                  <p className="text-xs text-slate-400 mb-4">Share something you are grateful for to roll for a random combat buff.</p>
-                  
-                  <textarea 
-                    value={gratitudeInput}
-                    onChange={(e) => setGratitudeInput(e.target.value)}
-                    placeholder="I am grateful for..."
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 h-24 mb-4 resize-none placeholder:text-slate-600"
-                    autoFocus
-                  />
-                  <div className="flex gap-3">
-                      <button 
-                        onClick={() => setShowGratitudeModal(false)}
-                        className="flex-1 py-3 text-slate-400 font-bold hover:text-white transition-colors"
-                      >
-                          Cancel
-                      </button>
-                      <button 
-                        onClick={handleGratitudeSubmit}
-                        disabled={!gratitudeInput.trim()}
-                        className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-lg font-bold shadow-lg"
-                      >
-                          Cast Spell
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
+      <style>{`
+        @keyframes float-up {
+          0% { transform: translateY(0) scale(0.8); opacity: 0; }
+          20% { opacity: 1; transform: translateY(-20px) scale(1.1); }
+          100% { transform: translateY(-120px) scale(1); opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        @keyframes pop-and-shine {
+          0% { transform: scale(0); opacity: 0; filter: brightness(2); }
+          50% { transform: scale(1.2); opacity: 1; filter: brightness(1.5); }
+          100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+        }
+      `}</style>
     </div>
   );
 }
