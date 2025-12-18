@@ -140,26 +140,30 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
            <div className="absolute top-5 right-5 text-slate-600"><HelpCircle size={20} /></div>
            <h2 className="text-lg font-bold text-slate-200 mb-2">獎勵設定</h2>
 
-            {/* Dimension Selector (Moved Here) */}
+{/* Dimension Selector (Moved Here) */}
            <div>
             <label className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 block">提升屬性 (可選 1-3 項)</label>
-            <div className="flex flex-wrap gap-2">
-                {Object.values(DimensionType).map((dt) => {
+            <div className="flex bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                {Object.values(DimensionType).map((dt, index) => {
                     const config = DIMENSION_CONFIG[dt];
                     const isSelected = selectedDims.includes(dt);
                     return (
                         <button
                             key={dt}
                             onClick={() => toggleDimension(dt)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all
+                            className={`flex flex-col items-center gap-1.5 px-2 py-2.5 transition-all flex-1 relative
+                                ${index !== 0 ? 'border-l border-slate-800' : ''}
                                 ${isSelected 
-                                    ? `bg-slate-800 border-${config.color.split('-')[1]}-500 shadow-sm ring-1 ring-${config.color.split('-')[1]}-500/50` 
-                                    : 'bg-slate-950 border-slate-800 hover:border-slate-600 opacity-60'
+                                    ? `bg-slate-800 shadow-inner` 
+                                    : 'bg-slate-950 hover:bg-slate-900 opacity-60 hover:opacity-80'
                                 }
                             `}
                         >
-                            <span className="text-lg">{config.icon}</span>
-                            <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-500'}`}>{config.label}</span>
+                            <span className="text-xl">{config.icon}</span>
+                            <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-white' : 'text-slate-500'}`}>{config.label}</span>
+                            {isSelected && (
+                                <div className={`absolute inset-0 border-2 border-${config.color.split('-')[1]}-500 rounded-none pointer-events-none`}></div>
+                            )}
                         </button>
                     )
                 })}
