@@ -162,7 +162,7 @@ export const CreateTaskView: React.FC<CreateTaskViewProps> = ({ onBack, onSave }
                             <span className="text-xl">{config.icon}</span>
                             <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-white' : 'text-slate-500'}`}>{config.label}</span>
                             {isSelected && (
-                                <div className={`absolute inset-0 border-2 border-${config.color.split('-')[1]}-500 rounded-none pointer-events-none`}></div>
+                                <div className={`absolute inset-0 border-2 ${config.borderColor} rounded-none pointer-events-none`}></div>
                             )}
                         </button>
                     )

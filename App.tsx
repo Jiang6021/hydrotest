@@ -7,7 +7,7 @@ import { StatusView } from './components/StatusView';
 import { GroupRaidView } from './components/GroupRaidView';
 import { StorageView } from './components/StorageView';
 import { ProfileView } from './components/ProfileView';
-import { DIMENSION_CONFIG, DimensionType } from './constants';
+import { DIMENSION_CONFIG, DimensionType, BuffType, BUFF_DESCRIPTIONS } from './constants';
 import { MESSAGE_SOUND_BASE64 } from './assets';
 
 import { 
@@ -19,7 +19,11 @@ import {
   BarChart, 
   UserCircle,
   TrendingUp,
-  Star
+  Star,
+  Zap, // For CRITICAL_x3
+  Heart, // For HEAL_LIFE
+  Sword, // For DOUBLE_DMG
+  X // For close button
 } from 'lucide-react';
 
 type Tab = 'LOBBY' | 'STATUS' | 'GROUP' | 'STORAGE' | 'PROFILE';
@@ -49,6 +53,7 @@ export default function App() {
     randomTasks,
     isProcessing, 
     lastActionFeedback,
+    lastGratitudeFeedback, // NEW: Destructure gratitude feedback
     isLoggedIn,
     joinGame,
     logout,
@@ -91,6 +96,17 @@ export default function App() {
       setIsXpFilling(false);
     }
   }, [lastActionFeedback]);
+
+  // NEW: 偵測到感恩回饋時，啟動動畫和音效
+  useEffect(() => {
+    if (lastGratitudeFeedback) {
+        if (successAudioRef.current) {
+            successAudioRef.current.currentTime = 0;
+            successAudioRef.current.play().catch(() => {});
+        }
+        // Feedback will automatically clear after its own timeout in ViewModel
+    }
+  }, [lastGratitudeFeedback]);
 
   // 偵測等級提升
   useEffect(() => {
@@ -152,6 +168,16 @@ export default function App() {
       { id: 'PROFILE', icon: UserCircle, label: 'Profile' }, 
   ];
 
+  // Helper to get Buff Icon
+  const getBuffIcon = (buffType: BuffType) => {
+    switch (buffType) {
+      case BuffType.CRITICAL_x3: return <Zap size={28} className="text-purple-400" />;
+      case BuffType.HEAL_LIFE: return <Heart size={28} className="text-rose-400" />;
+      case BuffType.DOUBLE_DMG: return <Sword size={28} className="text-indigo-400" />;
+      default: return <Sparkles size={28} className="text-slate-400" />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-inter select-none overflow-hidden">
       <div className="max-w-md mx-auto p-4 min-h-screen relative">
@@ -162,73 +188,157 @@ export default function App() {
          {activeTab === 'PROFILE' && <ProfileView player={currentPlayer} onLogout={logout} />}
 
         {/* --- 動態經驗值結算框 (核心需求) --- */}
+        {/* --- 動態經驗值結算框 (改進版) --- */}
         {xpFeedbackData && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center pointer-events-none p-6">
-              <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300"></div>
-              
-              <div className="relative w-full max-w-xs bg-slate-900 border-2 border-amber-400/50 rounded-[2rem] shadow-[0_0_80px_rgba(251,191,36,0.3)] p-8 flex flex-col items-center animate-in zoom-in-95 duration-500 pointer-events-auto">
-                  
-                  {/* 浮動 XP 數字動畫 */}
-                  <div className="absolute -top-12 text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-yellow-500 animate-[float-up_1.5s_ease-out_forwards] drop-shadow-[0_5px_15px_rgba(245,158,11,0.6)] font-pixel">
-                      +{xpFeedbackData.xp} XP
+          <>
+            {/* 背景遮罩 */}
+            <div className="fixed inset-0 z-[150] bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300 pointer-events-none"></div>
+            
+            {/* 浮動 XP 數字 (中央大字) */}
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[151] pointer-events-none">
+              <div className="animate-float-up-fade">
+                <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 to-yellow-500 drop-shadow-[0_10px_30px_rgba(245,158,11,0.8)] tracking-tight">
+                  +{xpFeedbackData.xp} XP
+                </div>
+                {xpFeedbackData.stats && xpFeedbackData.stats.length > 0 && (
+                  <div className="text-white text-base font-bold text-center mt-2 opacity-80">
+                    {DIMENSION_CONFIG[xpFeedbackData.stats[0]].label}
                   </div>
-
-                  <Trophy size={48} className="text-amber-400 mb-4 animate-bounce" />
-                  <h3 className="text-lg font-pixel text-white mb-6 tracking-tighter">任務達成</h3>
-
-                  <div className="w-full space-y-5">
-                      {xpFeedbackData.stats && xpFeedbackData.stats.map((dt: DimensionType) => {
-                          const config = DIMENSION_CONFIG[dt];
-                          const currentVal = currentPlayer.stats?.[dt] || 0;
-                          // 計算舊的百分比 (假設每 100 點一級)
-                          const progressBefore = Math.max(0, (currentVal - xpFeedbackData.xp) % 100);
-                          const progressAfter = currentVal % 100;
-
-                          return (
-                              <div key={dt} className="space-y-2">
-                                  <div className="flex justify-between items-center px-1">
-                                      <div className="flex items-center gap-2">
-                                          <span className="text-lg">{config.icon}</span>
-                                          <span className={`text-[10px] font-bold ${config.color} uppercase tracking-widest`}>{config.label}</span>
-                                      </div>
-                                      <span className="text-[10px] font-mono text-slate-500">注入能量...</span>
-                                  </div>
-                                  
-                                  {/* 動態填充進度條 */}
-                                  <div className="h-4 w-full bg-slate-950 rounded-full border border-slate-800 p-[2px] overflow-hidden relative">
-                                      {/* 背景底色 */}
-                                      <div 
-                                          className={`absolute inset-y-[2px] left-[2px] ${config.bg} opacity-20 rounded-full`}
-                                          style={{ width: `${progressBefore}%` }}
-                                      ></div>
-                                      
-                                      {/* 增長條 */}
-                                      <div 
-                                          className={`absolute inset-y-[2px] left-[2px] ${config.bg} rounded-full transition-all duration-[1200ms] ease-out shadow-[0_0_15px_rgba(255,255,255,0.2)]`}
-                                          style={{ 
-                                              width: isXpFilling ? `${progressAfter}%` : `${progressBefore}%` 
-                                          }}
-                                      >
-                                          {/* 流光效果 */}
-                                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-[shimmer_2s_infinite]"></div>
-                                      </div>
-                                  </div>
-                              </div>
-                          );
-                      })}
-                  </div>
-
-                  {xpFeedbackData.drop && (
-                      <div className="mt-8 flex items-center gap-3 bg-slate-800/80 p-3 px-5 rounded-2xl border border-amber-500/30 animate-in fade-in zoom-in duration-500 delay-500">
-                          <div className="text-3xl animate-bounce">{xpFeedbackData.drop}</div>
-                          <div className="text-left">
-                              <div className="text-[8px] text-amber-400 font-black uppercase tracking-widest">獲得稀有物</div>
-                              <div className="text-xs font-bold text-white">收納進背包</div>
-                          </div>
-                      </div>
-                  )}
+                )}
               </div>
-          </div>
+            </div>
+
+            {/* 進度條卡片 (底部彈出) */}
+            <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[152] w-full max-w-sm px-4 animate-slide-up-bounce pointer-events-auto">
+              <div className="bg-slate-900 border-2 border-amber-400/50 rounded-2xl shadow-[0_0_60px_rgba(251,191,36,0.4)] p-6 space-y-4">
+                
+                {/* 標題 */}
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Trophy size={24} className="text-amber-400 animate-bounce" />
+                  <h3 className="text-lg font-bold text-white">任務達成</h3>
+                </div>
+
+                {/* 各維度進度條 */}
+                {xpFeedbackData.stats && xpFeedbackData.stats.map((dt: DimensionType) => {
+                  const config = DIMENSION_CONFIG[dt];
+                  const currentVal = currentPlayer.stats?.[dt] || 0;
+                  const progressBefore = Math.max(0, (currentVal - xpFeedbackData.xp) % 100);
+                  const progressAfter = currentVal % 100;
+
+                  return (
+                    <div key={dt} className="space-y-2">
+                      {/* 標籤 */}
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{config.icon}</span>
+                          <span className={`text-xs font-bold ${config.color} uppercase tracking-wider`}>
+                            {config.label}
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono text-slate-500">
+                          {progressAfter}/100
+                        </span>
+                      </div>
+                      
+                      {/* 進度條 */}
+                      <div className="relative h-3 bg-slate-950 rounded-full border border-slate-800 overflow-hidden">
+                        {/* 背景光暈 */}
+                        <div 
+                          className={`absolute inset-0 ${config.bg} opacity-20 blur-sm transition-all duration-1000 ease-out`}
+                          style={{ width: isXpFilling ? `${progressAfter}%` : `${progressBefore}%` }}
+                        />
+                        
+                        {/* 主進度條 */}
+                        <div 
+                          className={`absolute inset-0 ${config.bg} transition-all duration-1000 ease-out shadow-lg`}
+                          style={{ width: isXpFilling ? `${progressAfter}%` : `${progressBefore}%` }}
+                        >
+                          {/* 流光效果 */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer" />
+                        </div>
+
+                        {/* 閃爍點 */}
+                        {isXpFilling && progressAfter > 0 && (
+                          <div 
+                            className={`absolute top-1/2 -translate-y-1/2 w-2 h-2 ${config.bg} rounded-full animate-pulse shadow-lg transition-all duration-1000 ease-out`}
+                            style={{ 
+                              left: `${progressAfter}%`, 
+                              marginLeft: '-4px' 
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 獲得稀有物 */}
+                {xpFeedbackData.drop && (
+                  <div className="flex items-center gap-3 bg-slate-800/80 p-3 px-5 rounded-2xl border border-amber-500/30 animate-scale-in mt-4">
+                    <div className="text-3xl animate-bounce">{xpFeedbackData.drop}</div>
+                    <div className="text-left">
+                      <div className="text-[9px] text-amber-400 font-black uppercase tracking-widest">
+                        獲得稀有物
+                      </div>
+                      <div className="text-xs font-bold text-white">收納進背包</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* --- NEW: 感恩回饋框 --- */}
+        {lastGratitudeFeedback && (
+            <>
+                {/* 背景遮罩 */}
+                <div className="fixed inset-0 z-[150] bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300 pointer-events-none"></div>
+
+                {/* 浮動 Buff 提示 (中央大字) */}
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[151] pointer-events-none">
+                    <div className="animate-float-up-fade-gratitude">
+                        <div className="flex flex-col items-center">
+                            {getBuffIcon(lastGratitudeFeedback.buffType)}
+                            <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-purple-200 to-purple-500 drop-shadow-[0_10px_30px_rgba(168,85,247,0.8)] tracking-tight mt-2">
+                                BUFF GET!
+                            </div>
+                            <div className="text-white text-base font-bold text-center mt-2 opacity-80">
+                                {BUFF_DESCRIPTIONS[lastGratitudeFeedback.buffType]}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 感恩回饋卡片 (底部彈出) */}
+                <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[152] w-full max-w-sm px-4 animate-slide-up-bounce pointer-events-auto">
+                    <div className="bg-slate-900 border-2 border-purple-400/50 rounded-2xl shadow-[0_0_60px_rgba(168,85,247,0.4)] p-6 space-y-4">
+                        
+                        {/* 標題 */}
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <Sparkles size={24} className="text-purple-400 animate-pulse" />
+                            <h3 className="text-lg font-bold text-white">感恩祝福</h3>
+                        </div>
+
+                        {/* Buff 類型和描述 */}
+                        <div className="flex flex-col items-center text-center p-4 bg-slate-950 rounded-lg border border-slate-800">
+                            <div className="flex items-center gap-3">
+                                {getBuffIcon(lastGratitudeFeedback.buffType)}
+                                <span className="text-lg font-bold text-purple-300">
+                                    {lastGratitudeFeedback.buffType.replace('_', ' ')}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-2">
+                                {BUFF_DESCRIPTIONS[lastGratitudeFeedback.buffType]}
+                            </p>
+                        </div>
+
+                        <div className="text-center text-xs text-slate-500 mt-4">
+                            下次攻擊時自動生效！
+                        </div>
+                    </div>
+                </div>
+            </>
         )}
 
         {/* 普通回饋 (如傷害數字、喝水提示) */}
@@ -260,6 +370,67 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* --- NEW: 感恩輸入彈窗 --- */}
+        {showGratitudeModal && (
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[300] backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm relative overflow-hidden animate-in zoom-in-95 duration-300">
+                     {/* Bg FX */}
+                     <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                         <Sparkles size={120} className="text-purple-500" />
+                     </div>
+
+                    <div className="relative z-10 text-center">
+                        <div className="w-16 h-16 bg-purple-900/50 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-purple-500/50">
+                            <Sparkles className="text-purple-400 animate-pulse" size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-4">分享感恩</h3>
+
+                        <textarea
+                            value={gratitudeInput}
+                            onChange={(e) => setGratitudeInput(e.target.value)}
+                            className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg p-3 text-white placeholder:text-slate-600 resize-none outline-none focus:border-purple-500 transition-colors mb-6"
+                            placeholder="今天你感謝了什麼？..."
+                            maxLength={100} // Limit length for brevity
+                        />
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setGratitudeInput(''); // Clear input on cancel
+                                    setShowGratitudeModal(false);
+                                }}
+                                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (!gratitudeInput.trim()) return;
+                                    await submitGratitude(gratitudeInput);
+                                    setGratitudeInput(''); // Clear input after submission
+                                    setShowGratitudeModal(false);
+                                }}
+                                disabled={!gratitudeInput.trim() || isProcessing}
+                                className="flex-[2] py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isProcessing ? '提交中...' : '提交感恩'}
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setGratitudeInput('');
+                                setShowGratitudeModal(false);
+                            }}
+                            className="absolute top-4 right-4 text-slate-500 hover:text-white"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
 
       {/* 底部導航欄 */}
@@ -287,6 +458,11 @@ export default function App() {
           0% { transform: translateY(0) scale(0.8); opacity: 0; }
           20% { opacity: 1; transform: translateY(-20px) scale(1.1); }
           100% { transform: translateY(-120px) scale(1); opacity: 0; }
+        }
+        @keyframes float-up-fade-gratitude {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            20% { opacity: 1; transform: translateY(-20px) scale(1.1); }
+            100% { transform: translateY(-120px) scale(1); opacity: 0; }
         }
         @keyframes shimmer {
           0% { transform: translateX(-100%); }

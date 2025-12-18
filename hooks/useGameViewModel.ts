@@ -34,6 +34,8 @@ export const useGameViewModel = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastActionFeedback, setLastActionFeedback] = useState<{msg: string, val: number, drop?: string | null, stats?: DimensionType[], xp?: number} | null>(null);
+  // NEW: Add state for gratitude feedback
+  const [lastGratitudeFeedback, setLastGratitudeFeedback] = useState<{ buffType: BuffType, msg: string } | null>(null);
 
   useEffect(() => {
     const unsubscribeTasks = gameService.subscribeToRandomTasks(setRandomTasks);
@@ -201,8 +203,14 @@ export const useGameViewModel = () => {
   const submitGratitude = useCallback(async (text: string) => {
     if (!currentRoomId || !roomData || !myPlayerId || isProcessing) return;
     setIsProcessing(true);
+    setLastGratitudeFeedback(null); // Clear previous feedback
     try {
-        await gameService.submitGratitudeTransaction(currentRoomId, myPlayerId, text);
+        const buff = await gameService.submitGratitudeTransaction(currentRoomId, myPlayerId, text);
+        if (buff !== BuffType.NONE) {
+            // Set gratitude feedback
+            setLastGratitudeFeedback({ buffType: buff, msg: 'Blessing Received!' });
+            setTimeout(() => setLastGratitudeFeedback(null), 4000);
+        }
     } catch (e) {
     } finally {
         setIsProcessing(false);
@@ -225,6 +233,7 @@ export const useGameViewModel = () => {
     loading: false, 
     isProcessing,
     lastActionFeedback,
+    lastGratitudeFeedback, // NEW: Expose gratitude feedback
     isLoggedIn: !!myPlayerId && !!currentRoomId, 
     joinGame,
     logout,
